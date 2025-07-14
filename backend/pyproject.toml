@@ -3,7 +3,7 @@ name = "gorlami-backend"
 version = "0.1.0"
 description = "Gorlami App Backend Server"
 authors = ["Gorlami.ai Team"]
-package-mode = false
+packages = [{include = "*"}]
 
 [tool.poetry.dependencies]
 python = "^3.13"
@@ -14,6 +14,9 @@ websockets = "^14.0"
 deepgram-sdk = "^4.6.0"
 openai = "^1.51.0"
 python-dotenv = "^1.0.0"
+
+[tool.poetry.scripts]
+start = "main:start_server"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
