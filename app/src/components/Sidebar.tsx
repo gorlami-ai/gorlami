@@ -42,8 +42,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       ),
     },
     {
-      id: 'transcripts',
-      label: 'Transcripts',
+      id: 'activity',
+      label: 'Activity',
       icon: (
         <svg
           width="20"

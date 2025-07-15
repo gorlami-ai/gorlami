@@ -49,11 +49,11 @@ export function MainLayout() {
             <div className="coming-soon">🚧 Coming Soon</div>
           </div>
         );
-      case 'transcripts':
+      case 'activity':
         return (
           <div className="placeholder-content">
-            <h2>Transcripts History</h2>
-            <p>View and manage your past transcription sessions.</p>
+            <h2>Activity History</h2>
+            <p>View and manage your past activity sessions.</p>
             <div className="coming-soon">🚧 Coming Soon</div>
           </div>
         );
