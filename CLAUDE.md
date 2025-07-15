@@ -2,25 +2,41 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Architecture
-
+## About
 Gorlami is a voice-driven AI assistant for macOS that captures voice input, provides live transcription, and uses AI to structure and enhance content in real-time. The vision is to become the #1 Mac AI assistant, replacing slower chat interfaces like Claude and OpenAI desktop apps.
 
-### Development Stages
-- **Stage 1**: Live transcription & quick rewrites (push-to-talk overlay, voice commands)
-- **Stage 2**: Context-aware enhancements (background capture of active window content)
-- **Stage 3**: RAG and document storage (organize all laptop data for deep understanding)
-
+## Architecture
 The system consists of two main components:
 
 1. **Python FastAPI backend** (`/backend`) - Handles WebSocket connections, speech-to-text via Deepgram, and AI processing via Azure OpenAI
-2. **Tauri macOS app** (`/app`) - Native desktop application with React frontend and Rust backend
+2. **Tauri macOS app** (`/app`) - Native desktop application with React frontend and Rust backend. We are only developing for MacOS!
 
 ### Tech Stack
 - **Frontend**: Tauri + React 18.3.1 + TypeScript + Vite
 - **Backend**: Python 3.13 + FastAPI + Poetry
 - **AI Services**: Deepgram (STT), Azure OpenAI (LLM)
-- **Communication**: WebSockets for real-time streaming
+- **Communication**: WebSockets for real-time streaming, and REST for others
+
+### Project structure
+```
+gorlami/
+├── app/                    # Tauri desktop app
+│   ├── src/               # React frontend
+│   │   ├── components/    # React components
+│   │   ├── App.tsx       # Main app component
+│   │   └── main.tsx      # Entry point
+│   ├── src-tauri/         # Rust backend
+│   │   ├── src/          # Rust source code
+│   │   │   ├── audio.rs  # Audio recording
+│   │   │   ├── shortcuts.rs # Global shortcuts
+│   │   │   ├── tray.rs   # System tray
+│   │   │   └── lib.rs    # Main app logic
+│   │   └── Cargo.toml    # Rust dependencies
+│   └── package.json      # Node dependencies
+└── backend/               # Python FastAPI server
+    ├── main.py           # WebSocket server
+    └── pyproject.toml    # Python dependencies
+```
 
 ## Commands
 
@@ -38,16 +54,7 @@ pnpm tauri build     # Build production app
 ```bash
 cd backend
 poetry install                           # Install dependencies
-poetry run uvicorn main:app --reload    # Run FastAPI server (http://localhost:8000)
-```
-
-### Environment Setup
-Create a `.env` file in `/backend` with:
-```
-DEEPGRAM_API_KEY=your_key_here
-AZURE_OPENAI_ENDPOINT_URL=your_endpoint_here
-AZURE_OPENAI_API_KEY=your_key_here
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini  # Optional, defaults to gpt-4o-mini
+poetry run start
 ```
 
 ## Key Implementation Areas
@@ -62,19 +69,7 @@ AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini  # Optional, defaults to gpt-4o-mini
 2. Tauri captures audio and streams to backend via WebSocket
 3. Backend processes audio through Deepgram for transcription
 4. Transcribed text is sent to Azure OpenAI for enhancement
-5. Results are displayed in floating widget
-
-### UI Components (Planned)
-- **Menu Bar Icon**: Always present, shows status
-- **Floating Widget**: Semi-transparent overlay that pops from menu bar for live transcript and quick actions
-- **Push-to-talk Recorder**: Hold to record, hold and lock recording functionality
-- **Voice Commands**: On-demand transforms (formatting, bullet lists, tone edits)
-
-### Current State
-- Basic project structure established
-- Backend WebSocket infrastructure ready
-- Frontend using default Tauri template (needs implementation)
-- No tests, linting, or CI/CD configured yet
+5. Results are pasted at cursor
 
 ## General Principles
 - Plan changes carefully and consider side effects
@@ -82,3 +77,4 @@ AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini  # Optional, defaults to gpt-4o-mini
 - Focus on areas specifically mentioned by the user
 - Maintain separation between Tauri frontend and FastAPI backend
 - Use WebSockets for all real-time communication
+- Use normal REST api for rest
