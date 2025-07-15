@@ -314,7 +314,7 @@ pub async fn connect_websocket(
             }
             
             let app_clone = app.clone();
-            let state_clone = state.clone();
+            let state_clone = state.inner().clone();
             
             // Start the main connection handler task
             let handle = tokio::spawn(async move {
