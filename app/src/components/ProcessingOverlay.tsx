@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useEffect, useState } from 'react';
 import './ProcessingOverlay.css';
@@ -116,13 +115,6 @@ export function ProcessingOverlay() {
     };
   }, [autoHideTimeout]);
 
-  const hideOverlay = async () => {
-    try {
-      await invoke('hide_processing_overlay');
-    } catch (error) {
-      console.error('Failed to hide processing overlay:', error);
-    }
-  };
 
   const getStateDisplay = () => {
     switch (processingState) {

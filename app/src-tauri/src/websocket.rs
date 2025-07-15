@@ -299,9 +299,93 @@ pub async fn connect_websocket(
                 let _ = app.emit("websocket_status", &WebSocketStatus::Connected);
             }
             
-            // For now, just close the connection immediately
-            // In a real implementation, we'd keep it open and handle messages
-            drop(ws_stream);
+            // Keep connection open and start message handling
+            use futures_util::{SinkExt, StreamExt};
+            use tokio::sync::broadcast;
+            
+            let (mut write, mut read) = ws_stream.split();
+            let (tx, mut rx) = broadcast::channel::<Message>(32);
+            
+            // Store the sender for sending messages
+            {
+                let client = state.lock().unwrap();
+                let mut sender = client.tx.lock().unwrap();
+                *sender = Some(tx);
+            }
+            
+            let app_clone = app.clone();
+            let state_clone = state.clone();
+            
+            // Start the main connection handler task
+            let handle = tokio::spawn(async move {
+                // Handle incoming messages
+                let app_for_read = app_clone.clone();
+                let state_for_read = state_clone.clone();
+                let read_task = tokio::spawn(async move {
+                    while let Some(msg) = read.next().await {
+                        match msg {
+                            Ok(Message::Text(text)) => {
+                                if let Ok(response) = serde_json::from_str::<TranscriptionResponse>(&text) {
+                                    let _ = app_for_read.emit("transcription_response", &response);
+                                }
+                            }
+                            Ok(Message::Close(_)) => {
+                                {
+                                    let client = state_for_read.lock().unwrap();
+                                    let mut status = client.status.lock().unwrap();
+                                    *status = WebSocketStatus::Disconnected;
+                                }
+                                let _ = app_for_read.emit("websocket_status", &WebSocketStatus::Disconnected);
+                                break;
+                            }
+                            Err(e) => {
+                                let error_msg = format!("WebSocket error: {}", e);
+                                {
+                                    let client = state_for_read.lock().unwrap();
+                                    let mut status = client.status.lock().unwrap();
+                                    *status = WebSocketStatus::Error(error_msg.clone());
+                                }
+                                let _ = app_for_read.emit("websocket_status", &WebSocketStatus::Error(error_msg));
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                    // Clean up sender on disconnect
+                    {
+                        let client = state_for_read.lock().unwrap();
+                        let mut sender = client.tx.lock().unwrap();
+                        *sender = None;
+                    }
+                });
+
+                // Handle outgoing messages
+                let write_task = tokio::spawn(async move {
+                    while let Ok(msg) = rx.recv().await {
+                        if let Err(e) = write.send(msg).await {
+                            eprintln!("Failed to send WebSocket message: {}", e);
+                            break;
+                        }
+                    }
+                });
+
+                // Wait for either task to complete
+                tokio::select! {
+                    _ = read_task => {
+                        println!("WebSocket read task completed");
+                    },
+                    _ = write_task => {
+                        println!("WebSocket write task completed");
+                    },
+                }
+            });
+            
+            // Store the connection handle
+            {
+                let client = state.lock().unwrap();
+                let mut connection_handle = client.connection_handle.lock().unwrap();
+                *connection_handle = Some(handle);
+            }
             
             println!("WebSocket connected successfully to: {}", config.url);
             Ok(())
