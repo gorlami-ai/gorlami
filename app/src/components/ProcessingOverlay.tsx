@@ -18,7 +18,7 @@ export function ProcessingOverlay() {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [isVisible, setIsVisible] = useState(false);
-  const [autoHideTimeout, setAutoHideTimeout] = useState<number | null>(null);
+  const [autoHideTimeout, setAutoHideTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-hide overlay after delay
   const scheduleAutoHide = (delay: number = 3000) => {

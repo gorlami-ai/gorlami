@@ -9,7 +9,6 @@ use tauri::{
 pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     let quit_item = MenuItem::with_id(app, "quit", "Quit Gorlami", true, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
-    let shortcuts_item = MenuItem::with_id(app, "shortcuts", "Shortcuts...", true, None::<&str>)?;
     let dashboard_item = MenuItem::with_id(app, "dashboard", "Dashboard", true, None::<&str>)?;
 
     // Create microphone submenu with real devices
@@ -62,7 +61,6 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
             &separator,
             &dashboard_item,
             &microphone_menu,
-            &shortcuts_item,
             &settings_item,
             &separator,
             &quit_item,
@@ -78,13 +76,10 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
                 app.exit(0);
             }
             "dashboard" => {
-                open_main_window(app);
+                open_main_window(app, None);
             }
             "settings" => {
-                open_settings_window(app);
-            }
-            "shortcuts" => {
-                open_settings_window(app);
+                open_main_window(app, Some("settings"));
             }
             id if id.starts_with("mic_") => {
                 // Handle microphone selection
@@ -114,17 +109,27 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     Ok(())
 }
 
-fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>) {
+fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>, tab: Option<&str>) {
     // Check if main window already exists
     if let Some(window) = app.get_webview_window("main") {
+        // If tab is specified, navigate to it
+        if let Some(tab_name) = tab {
+            let _ = window.eval(&format!("window.location.hash = '#{}'", tab_name));
+        }
         let _ = window.set_focus();
         let _ = window.show();
         return;
     }
 
+    // Create URL with optional hash for tab
+    let url = match tab {
+        Some(tab_name) => format!("index.html#{}", tab_name),
+        None => "index.html".to_string(),
+    };
+
     // Create new main window
     let window_result =
-        WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
+        WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App(url.into()))
             .title("Gorlami")
             .inner_size(1200.0, 800.0)
             .min_inner_size(800.0, 600.0)
@@ -139,34 +144,6 @@ fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>) {
         }
         Err(e) => {
             eprintln!("Failed to create main window: {}", e);
-        }
-    }
-}
-
-fn open_settings_window<R: Runtime>(app: &tauri::AppHandle<R>) {
-    // Check if settings window already exists
-    if let Some(window) = app.get_webview_window("settings") {
-        let _ = window.set_focus();
-        return;
-    }
-
-    // Create new settings window using the same React app with settings route
-    let window_result =
-        WebviewWindowBuilder::new(app, "settings", tauri::WebviewUrl::App("index.html".into()))
-            .title("Gorlami Settings")
-            .inner_size(600.0, 500.0)
-            .min_inner_size(500.0, 400.0)
-            .resizable(true)
-            .center()
-            .initialization_script("window.__TAURI_WINDOW_LABEL__ = 'settings';")
-            .build();
-
-    match window_result {
-        Ok(window) => {
-            let _ = window.set_focus();
-        }
-        Err(e) => {
-            eprintln!("Failed to create settings window: {}", e);
         }
     }
 }

@@ -1,11 +1,39 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dashboard } from './Dashboard';
 import './MainLayout.css';
 import { SettingsWindow } from './SettingsWindow';
 import { Sidebar } from './Sidebar';
 
 export function MainLayout() {
-  const [activeTab, setActiveTab] = useState('home');
+  // Get initial tab from URL hash, default to 'home'
+  const getInitialTab = () => {
+    const hash = window.location.hash.slice(1); // Remove the #
+    return hash || 'home';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab());
+
+  useEffect(() => {
+    // Listen for hash changes
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash) {
+        setActiveTab(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  // Update URL hash when tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    window.location.hash = tab;
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -36,7 +64,7 @@ export function MainLayout() {
 
   return (
     <div className="main-layout">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
       <main className="main-content">{renderContent()}</main>
     </div>
   );
