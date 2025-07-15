@@ -4,7 +4,12 @@
       "Bash(cp:*)",
       "Bash(pnpm tauri:*)",
       "Bash(pnpm build:*)",
-      "Bash(cargo:*)"
+      "Bash(cargo:*)",
+      "Bash(poetry run:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(./src-tauri/target/debug/gorlami)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
