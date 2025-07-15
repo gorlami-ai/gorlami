@@ -17,11 +17,6 @@ Gorlami is a voice-driven AI assistant that uses AI to understand, structure, ed
 2. **Quick Email Reply:** While viewing email, record voice → formatted response
 3. **Tone & Style Editing:** Highlight text and use voice command to change tone/style
 
-## Development Plans
-- [ ] **Stage 1**: Live transcription & quick rewrites (push-to-talk overlay, voice commands)
-- [ ] **Stage 2**: Context-aware enhancements (background capture of active window content)
-- [ ] **Stage 3**: RAG and document storage (organize all laptop data for deep understanding)
-
 ## Getting Started
 
 ### Prerequisites
@@ -37,15 +32,7 @@ Gorlami is a voice-driven AI assistant that uses AI to understand, structure, ed
    ```bash
    cd backend
    poetry install
-   
-   # Create .env file with your API keys
-   cat > .env << EOF
-   DEEPGRAM_API_KEY=your_deepgram_api_key
-   AZURE_OPENAI_ENDPOINT_URL=your_azure_endpoint
-   AZURE_OPENAI_API_KEY=your_azure_api_key
-   AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini
-   EOF
-   
+   # ensure envs are sent
    poetry run start
    ```
 
@@ -67,21 +54,7 @@ Gorlami is a voice-driven AI assistant that uses AI to understand, structure, ed
 ```
 gorlami/
 ├── app/                    # Tauri desktop app
-│   ├── src/               # React frontend
-│   │   ├── components/    # React components
-│   │   ├── App.tsx       # Main app component
-│   │   └── main.tsx      # Entry point
-│   ├── src-tauri/         # Rust backend
-│   │   ├── src/          # Rust source code
-│   │   │   ├── audio.rs  # Audio recording
-│   │   │   ├── shortcuts.rs # Global shortcuts
-│   │   │   ├── tray.rs   # System tray
-│   │   │   └── lib.rs    # Main app logic
-│   │   └── Cargo.toml    # Rust dependencies
-│   └── package.json      # Node dependencies
 └── backend/               # Python FastAPI server
-    ├── main.py           # WebSocket server
-    └── pyproject.toml    # Python dependencies
 ```
 
 ### Available Commands
@@ -93,26 +66,13 @@ poetry run start          # Start the server (http://localhost:8000)
 poetry run uvicorn main:app --reload  # Start with auto-reload
 ```
 
-#### Frontend
+#### App
 ```bash
 cd app
 pnpm dev                  # Start Vite dev server only
 pnpm tauri dev           # Run full app in development
 pnpm build               # Build frontend assets
 pnpm tauri build         # Build production app (.dmg for macOS)
-```
-
-### Testing
-
-#### Running Tests
-```bash
-# Backend tests
-cd backend
-poetry run pytest         # (tests coming soon)
-
-# Frontend tests  
-cd app
-pnpm test                # (tests coming soon)
 ```
 
 #### Manual Testing Checklist
@@ -122,44 +82,6 @@ pnpm test                # (tests coming soon)
 - [ ] Processing overlay appears when recording
 - [ ] Backend connection status updates
 - [ ] Microphone selection works
-
-## Architecture
-
-### Tech Stack
-- **Frontend**: Tauri v2 + React 18 + TypeScript + Vite
-- **Backend**: Python 3.13 + FastAPI + WebSockets
-- **AI Services**: 
-  - Deepgram (Speech-to-Text)
-  - Azure OpenAI (Text enhancement)
-- **Communication**: WebSocket for real-time audio streaming
-
-### Key Components
-1. **System Tray** - Menu bar interface
-2. **Global Shortcuts** - System-wide hotkeys
-3. **Audio Recorder** - Captures microphone input
-4. **WebSocket Client** - Streams audio to backend
-5. **Processing Overlay** - Minimal UI feedback
-
-## Roadmap
-
-### Stage 1: Live Transcription (Current)
-- ✅ Menu bar app with system tray
-- ✅ Push-to-talk recording (⌘+Ctrl+Space)
-- ✅ Global shortcuts system
-- ✅ Processing overlay UI
-- 🚧 WebSocket audio streaming
-- 🚧 Live transcription display
-- 🚧 AI text enhancement
-
-### Stage 2: Context Awareness (Planned)
-- Background capture of active window
-- Smart context injection
-- Enhanced AI responses
-
-### Stage 3: RAG & Storage (Future)
-- Document indexing and search
-- Personal knowledge base
-- Advanced AI features
 
 ## Contributing
 

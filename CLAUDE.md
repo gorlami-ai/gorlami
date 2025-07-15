@@ -22,15 +22,8 @@ The system consists of two main components:
 gorlami/
 ├── app/                    # Tauri desktop app
 │   ├── src/               # React frontend
-│   │   ├── components/    # React components
-│   │   ├── App.tsx       # Main app component
-│   │   └── main.tsx      # Entry point
 │   ├── src-tauri/         # Rust backend
 │   │   ├── src/          # Rust source code
-│   │   │   ├── audio.rs  # Audio recording
-│   │   │   ├── shortcuts.rs # Global shortcuts
-│   │   │   ├── tray.rs   # System tray
-│   │   │   └── lib.rs    # Main app logic
 │   │   └── Cargo.toml    # Rust dependencies
 │   └── package.json      # Node dependencies
 └── backend/               # Python FastAPI server
