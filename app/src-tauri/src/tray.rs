@@ -1,33 +1,66 @@
+use crate::simple_audio::get_audio_devices;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Runtime,
+    webview::WebviewWindowBuilder,
+    Manager, Runtime,
 };
 
 pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     let quit_item = MenuItem::with_id(app, "quit", "Quit Gorlami", true, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
     let shortcuts_item = MenuItem::with_id(app, "shortcuts", "Shortcuts...", true, None::<&str>)?;
-    
-    // Create microphone submenu
-    let mic_default = MenuItem::with_id(app, "mic_default", "Default", true, None::<&str>)?;
-    let microphone_menu = Submenu::with_items(
-        app,
-        "Microphone",
-        true,
-        &[&mic_default],
-    )?;
-    
-    // Status item (will be updated dynamically)
-    let status_item = MenuItem::with_id(app, "status", "Hello, User • Offline", false, None::<&str>)?;
-    
+    let dashboard_item = MenuItem::with_id(app, "dashboard", "Dashboard", true, None::<&str>)?;
+
+    // Create microphone submenu with real devices
+    let devices = get_audio_devices().unwrap_or_default();
+    let mut mic_items = Vec::new();
+
+    for device in devices {
+        let item = MenuItem::with_id(
+            app,
+            &format!("mic_{}", device.name),
+            &format!(
+                "{}{}",
+                device.name,
+                if device.is_default { " (Default)" } else { "" }
+            ),
+            true,
+            None::<&str>,
+        )?;
+        mic_items.push(item);
+    }
+
+    if mic_items.is_empty() {
+        let default_item = MenuItem::with_id(
+            app,
+            "mic_default",
+            "No microphones found",
+            false,
+            None::<&str>,
+        )?;
+        mic_items.push(default_item);
+    }
+
+    let mic_refs: Vec<&dyn tauri::menu::IsMenuItem<R>> = mic_items
+        .iter()
+        .map(|item| item as &dyn tauri::menu::IsMenuItem<R>)
+        .collect();
+    let microphone_menu = Submenu::with_items(app, "Microphone", true, &mic_refs)?;
+
+    // Status item with actual username
+    let username = whoami::username();
+    let status_text = format!("Hello, {} • Offline", username);
+    let status_item = MenuItem::with_id(app, "status", &status_text, false, None::<&str>)?;
+
     let separator = PredefinedMenuItem::separator(app)?;
-    
+
     let menu = Menu::with_items(
         app,
         &[
             &status_item,
             &separator,
+            &dashboard_item,
             &microphone_menu,
             &shortcuts_item,
             &settings_item,
@@ -44,13 +77,25 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
             "quit" => {
                 app.exit(0);
             }
+            "dashboard" => {
+                open_main_window(app);
+            }
             "settings" => {
-                // Will implement settings window later
-                println!("Settings clicked");
+                open_settings_window(app);
             }
             "shortcuts" => {
-                // Will implement shortcuts window later
-                println!("Shortcuts clicked");
+                open_settings_window(app);
+            }
+            id if id.starts_with("mic_") => {
+                // Handle microphone selection
+                let device_name = id.strip_prefix("mic_").unwrap_or("Default");
+                if let Some(audio_recorder) =
+                    app.try_state::<std::sync::Arc<crate::simple_audio::SimpleAudioRecorder>>()
+                {
+                    if let Err(e) = audio_recorder.select_device(device_name) {
+                        eprintln!("Failed to select audio device: {}", e);
+                    }
+                }
             }
             _ => {}
         })
@@ -69,6 +114,63 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     Ok(())
 }
 
+fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>) {
+    // Check if main window already exists
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_focus();
+        let _ = window.show();
+        return;
+    }
+
+    // Create new main window
+    let window_result =
+        WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
+            .title("Gorlami")
+            .inner_size(1200.0, 800.0)
+            .min_inner_size(800.0, 600.0)
+            .resizable(true)
+            .center()
+            .initialization_script("window.__TAURI_WINDOW_LABEL__ = 'main';")
+            .build();
+
+    match window_result {
+        Ok(window) => {
+            let _ = window.set_focus();
+        }
+        Err(e) => {
+            eprintln!("Failed to create main window: {}", e);
+        }
+    }
+}
+
+fn open_settings_window<R: Runtime>(app: &tauri::AppHandle<R>) {
+    // Check if settings window already exists
+    if let Some(window) = app.get_webview_window("settings") {
+        let _ = window.set_focus();
+        return;
+    }
+
+    // Create new settings window using the same React app with settings route
+    let window_result =
+        WebviewWindowBuilder::new(app, "settings", tauri::WebviewUrl::App("index.html".into()))
+            .title("Gorlami Settings")
+            .inner_size(600.0, 500.0)
+            .min_inner_size(500.0, 400.0)
+            .resizable(true)
+            .center()
+            .initialization_script("window.__TAURI_WINDOW_LABEL__ = 'settings';")
+            .build();
+
+    match window_result {
+        Ok(window) => {
+            let _ = window.set_focus();
+        }
+        Err(e) => {
+            eprintln!("Failed to create settings window: {}", e);
+        }
+    }
+}
+
 pub fn update_tray_status<R: Runtime>(
     _app: &tauri::AppHandle<R>,
     username: &str,
@@ -76,9 +178,9 @@ pub fn update_tray_status<R: Runtime>(
 ) -> tauri::Result<()> {
     let status = if is_online { "Online" } else { "Offline" };
     let _status_text = format!("Hello, {} • {}", username, status);
-    
+
     // For now, we'll update this when we have access to the menu item
     // This will be improved in the next iteration
-    
+
     Ok(())
 }

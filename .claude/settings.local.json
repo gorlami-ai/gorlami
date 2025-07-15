@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)",
+      "Bash(pnpm tauri:*)",
+      "Bash(pnpm build:*)",
+      "Bash(cargo:*)"
+    ],
+    "deny": []
+  }
+}

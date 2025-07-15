@@ -10,23 +10,14 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "title": "Gorlami",
-        "width": 300,
-        "height": 100,
-        "visible": true,
-        "transparent": true,
-        "decorations": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "x": 100,
-        "y": 100
-      }
-    ],
+    "windows": [],
     "macOSPrivateApi": true,
     "security": {
       "csp": null
+    },
+    "trayIcon": {
+      "iconPath": "icons/tray-icon.png",
+      "iconAsTemplate": true
     }
   },
   "bundle": {
