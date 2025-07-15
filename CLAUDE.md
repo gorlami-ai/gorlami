@@ -36,11 +36,12 @@ gorlami/
 ### Frontend Development
 ```bash
 cd app
-pnpm install          # Install dependencies
+pnpm install         # Install dependencies
 pnpm dev             # Start Vite dev server (http://localhost:1420)
 pnpm tauri dev       # Run full Tauri app in development
 pnpm build           # Build TypeScript and Vite
 pnpm tauri build     # Build production app
+pnpm run lint        # Run TypeScript and Rust linters (checks for type errors and warnings)
 ```
 
 ### Backend Development
@@ -50,24 +51,10 @@ poetry install                           # Install dependencies
 poetry run start
 ```
 
-## Key Implementation Areas
-
-### WebSocket Communication
-- Backend WebSocket endpoint: `/ws/transcribe` in `backend/main.py`
-- Handles real-time audio streaming for transcription
-- Frontend needs to implement WebSocket client in Tauri app
-
-### Voice Recording Flow
-1. User triggers recording via menu bar icon or hotkey (⌘+Ctrl)
-2. Tauri captures audio and streams to backend via WebSocket
-3. Backend processes audio through Deepgram for transcription
-4. Transcribed text is sent to Azure OpenAI for enhancement
-5. Results are pasted at cursor
-
 ## General Principles
 - Plan changes carefully and consider side effects
 - Test thoroughly before reporting task completion
 - Focus on areas specifically mentioned by the user
 - Maintain separation between Tauri frontend and FastAPI backend
-- Use WebSockets for all real-time communication
-- Use normal REST api for rest
+- Develop small easily testable functions and services
+- Always run the appropriate linter 

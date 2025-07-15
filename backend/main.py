@@ -26,12 +26,28 @@ AZURE_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o-mini")
 
 
 # Initialize clients only if credentials are available
-openai_client = AzureOpenAI(
-    azure_endpoint=AZURE_ENDPOINT,
-    api_key=AZURE_API_KEY,
-    api_version="2025-01-01-preview",
-)
-deepgram_client = DeepgramClient(DEEP_GRAM_KEY)
+openai_client = None
+deepgram_client = None
+
+if AZURE_ENDPOINT and AZURE_API_KEY:
+    try:
+        openai_client = AzureOpenAI(
+            azure_endpoint=AZURE_ENDPOINT,
+            api_key=AZURE_API_KEY,
+            api_version="2025-01-01-preview",
+        )
+        logger.info("Azure OpenAI client initialized successfully")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Azure OpenAI client: {e}")
+        openai_client = None
+
+if DEEP_GRAM_KEY:
+    try:
+        deepgram_client = DeepgramClient(DEEP_GRAM_KEY)
+        logger.info("Deepgram client initialized successfully")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Deepgram client: {e}")
+        deepgram_client = None
 
 
 # Pydantic Models

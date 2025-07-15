@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "lint": "tsc --noEmit && cd src-tauri && cargo check && cargo clippy -- -D warnings"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
