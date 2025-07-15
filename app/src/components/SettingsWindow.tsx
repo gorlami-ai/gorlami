@@ -374,58 +374,6 @@ export function SettingsWindow() {
             </div>
           </div>
         </section>
-
-        {/* App Information */}
-        <section className="settings-section">
-          <h2>Application Info</h2>
-          <div className="info-grid">
-            <div className="info-item">
-              <strong>Version:</strong> 0.1.0
-            </div>
-            <div className="info-item">
-              <strong>Status:</strong> Development Mode
-            </div>
-            <div className="info-item">
-              <strong>Default Shortcuts:</strong>
-              <ul>
-                <li>⌘+Ctrl+Space: Toggle transcription</li>
-                <li>⌘+Ctrl+E: Edit mode</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* Missing Features Section */}
-        <section className="settings-section missing-features">
-          <h2>🚧 Missing Features</h2>
-          <div className="feature-status">
-            <h3>Currently Available:</h3>
-            <ul className="feature-list available">
-              <li>✅ Global keyboard shortcuts</li>
-              <li>✅ Audio device selection</li>
-              <li>✅ Recording toggle</li>
-              <li>✅ System tray menu</li>
-              <li>✅ Settings window</li>
-              <li>✅ WebSocket connection to backend</li>
-              <li>✅ Backend configuration</li>
-              <li>✅ Connection status monitoring</li>
-            </ul>
-
-            <h3>Missing/Incomplete:</h3>
-            <ul className="feature-list missing">
-              <li>❌ Actual audio recording implementation</li>
-              <li>❌ Real-time transcription display</li>
-              <li>❌ AI text enhancement</li>
-              <li>❌ Text pasting at cursor</li>
-              <li>❌ Persistent settings storage</li>
-              <li>❌ Custom shortcut validation</li>
-              <li>❌ Audio level visualization</li>
-              <li>❌ Real audio device enumeration</li>
-              <li>❌ Audio streaming to backend</li>
-              <li>❌ WebSocket auto-reconnection</li>
-            </ul>
-          </div>
-        </section>
       </div>
     </div>
   );

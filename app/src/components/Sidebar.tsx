@@ -111,18 +111,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           </button>
         ))}
       </nav>
-
-      <div className="sidebar-footer">
-        <div className="user-info">
-          <div className="user-avatar">
-            <span>🎤</span>
-          </div>
-          <div className="user-details">
-            <div className="user-name">Voice Assistant</div>
-            <div className="user-email">v0.1.0</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

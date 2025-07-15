@@ -148,78 +148,6 @@
   color: white;
 }
 
-.info-grid {
-  display: grid;
-  gap: 20px;
-}
-
-.info-item {
-  padding: 20px;
-  background: #f8fafc;
-  border-radius: 12px;
-  border-left: 4px solid #6366f1;
-}
-
-.info-item strong {
-  color: #1f2937;
-  font-weight: 600;
-}
-
-.info-item ul {
-  margin: 12px 0 0 0;
-  padding-left: 24px;
-}
-
-.info-item li {
-  color: #6b7280;
-  margin: 8px 0;
-  font-size: 14px;
-}
-
-.missing-features {
-  border-left: 4px solid #f59e0b;
-}
-
-.missing-features h2 {
-  border-bottom-color: #f59e0b;
-}
-
-.feature-status {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
-}
-
-.feature-status h3 {
-  margin: 0 0 16px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.feature-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.feature-list li {
-  padding: 12px 0;
-  border-bottom: 1px solid #e5e7eb;
-  font-size: 15px;
-}
-
-.feature-list li:last-child {
-  border-bottom: none;
-}
-
-.feature-list.available li {
-  color: #059669;
-}
-
-.feature-list.missing li {
-  color: #dc2626;
-}
 
 .loading {
   text-align: center;
@@ -236,10 +164,6 @@
 
   .settings-section {
     padding: 24px;
-  }
-
-  .feature-status {
-    grid-template-columns: 1fr;
   }
 
   .settings-header h1 {
