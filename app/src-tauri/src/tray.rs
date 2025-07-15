@@ -3,7 +3,7 @@ use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     webview::WebviewWindowBuilder,
-    Manager, Runtime,
+    Manager, Runtime, WindowEvent,
 };
 
 pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
@@ -140,6 +140,16 @@ fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>, tab: Option<&str>) {
 
     match window_result {
         Ok(window) => {
+            // Handle window close event to prevent app shutdown
+            let window_handle = window.clone();
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    // Hide window instead of closing the app
+                    api.prevent_close();
+                    let _ = window_handle.hide();
+                }
+            });
+            
             let _ = window.set_focus();
         }
         Err(e) => {
