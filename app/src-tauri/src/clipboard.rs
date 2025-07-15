@@ -25,11 +25,6 @@ impl ClipboardManager {
         Ok(())
     }
 
-    pub fn get_text(&mut self) -> Result<String, String> {
-        self.clipboard
-            .get_text()
-            .map_err(|e| format!("Failed to get text from clipboard: {}", e))
-    }
 
     pub fn paste_at_cursor(&mut self, text: &str) -> Result<(), String> {
         // First, copy the text to clipboard

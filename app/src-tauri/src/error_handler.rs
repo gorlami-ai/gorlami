@@ -80,28 +80,8 @@ impl ErrorHandler {
         }
     }
 
-    pub fn handle_audio_error(&self, message: &str, details: Option<&str>) {
-        let mut error = AppError::new(ErrorType::Audio, "Audio Error", message);
-
-        if let Some(details) = details {
-            error = error.with_details(details);
-        }
-
-        self.handle_error(error);
-    }
-
     pub fn handle_websocket_error(&self, message: &str, details: Option<&str>) {
         let mut error = AppError::new(ErrorType::WebSocket, "Connection Error", message);
-
-        if let Some(details) = details {
-            error = error.with_details(details);
-        }
-
-        self.handle_error(error);
-    }
-
-    pub fn handle_settings_error(&self, message: &str, details: Option<&str>) {
-        let mut error = AppError::new(ErrorType::Settings, "Settings Error", message);
 
         if let Some(details) = details {
             error = error.with_details(details);
@@ -120,24 +100,6 @@ impl ErrorHandler {
         self.handle_error(error);
     }
 
-    pub fn handle_shortcuts_error(&self, message: &str, details: Option<&str>) {
-        let mut error = AppError::new(ErrorType::Shortcuts, "Shortcuts Error", message);
-
-        if let Some(details) = details {
-            error = error.with_details(details);
-        }
-
-        self.handle_error(error);
-    }
-
-    pub fn handle_system_error(&self, message: &str, details: Option<&str>) {
-        let error = AppError::new(ErrorType::System, "System Error", message)
-            .with_details(details.unwrap_or("Unknown system error"))
-            .unrecoverable();
-
-        self.handle_error(error);
-    }
-
     fn show_critical_error_notification(&self, error: &AppError) {
         // For now, just emit a critical error event
         // In a full implementation, this could show a native notification
@@ -145,47 +107,6 @@ impl ErrorHandler {
     }
 }
 
-// Helper trait for converting errors to AppError
-pub trait IntoAppError {
-    fn into_audio_error(self, message: &str) -> AppError;
-    fn into_websocket_error(self, message: &str) -> AppError;
-    fn into_settings_error(self, message: &str) -> AppError;
-    fn into_clipboard_error(self, message: &str) -> AppError;
-    fn into_shortcuts_error(self, message: &str) -> AppError;
-    fn into_system_error(self, message: &str) -> AppError;
-}
-
-impl<T: fmt::Display> IntoAppError for T {
-    fn into_audio_error(self, message: &str) -> AppError {
-        AppError::new(ErrorType::Audio, "Audio Error", message).with_details(&self.to_string())
-    }
-
-    fn into_websocket_error(self, message: &str) -> AppError {
-        AppError::new(ErrorType::WebSocket, "Connection Error", message)
-            .with_details(&self.to_string())
-    }
-
-    fn into_settings_error(self, message: &str) -> AppError {
-        AppError::new(ErrorType::Settings, "Settings Error", message)
-            .with_details(&self.to_string())
-    }
-
-    fn into_clipboard_error(self, message: &str) -> AppError {
-        AppError::new(ErrorType::Clipboard, "Clipboard Error", message)
-            .with_details(&self.to_string())
-    }
-
-    fn into_shortcuts_error(self, message: &str) -> AppError {
-        AppError::new(ErrorType::Shortcuts, "Shortcuts Error", message)
-            .with_details(&self.to_string())
-    }
-
-    fn into_system_error(self, message: &str) -> AppError {
-        AppError::new(ErrorType::System, "System Error", message)
-            .with_details(&self.to_string())
-            .unrecoverable()
-    }
-}
 
 // Tauri commands for error handling
 #[tauri::command]

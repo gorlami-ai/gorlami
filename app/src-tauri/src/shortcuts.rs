@@ -32,10 +32,6 @@ impl<R: Runtime> ShortcutManager<R> {
         }
     }
 
-    pub fn init(&self) -> tauri::Result<()> {
-        let config = self.config.lock().unwrap().clone();
-        self.register_shortcuts(&config)
-    }
 
     pub fn init_with_config(&self, config: ShortcutConfig) -> tauri::Result<()> {
         // Update stored config
