@@ -1,14 +1,10 @@
+import { NavLink } from 'react-router-dom';
 import './Sidebar.css';
 
-interface SidebarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-}
-
-export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+export function Sidebar() {
   const menuItems = [
     {
-      id: 'home',
+      path: '/',
       label: 'Home',
       icon: (
         <svg
@@ -25,7 +21,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       ),
     },
     {
-      id: 'dictionary',
+      path: '/dictionary',
       label: 'Dictionary',
       icon: (
         <svg
@@ -42,7 +38,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       ),
     },
     {
-      id: 'activity',
+      path: '/activity',
       label: 'Activity',
       icon: (
         <svg
@@ -62,7 +58,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       ),
     },
     {
-      id: 'settings',
+      path: '/settings',
       label: 'Settings',
       icon: (
         <svg
@@ -101,14 +97,14 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
       <nav className="sidebar-nav">
         {menuItems.map((item) => (
-          <button
-            key={item.id}
-            className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => onTabChange(item.id)}
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
           >
             <span className="nav-icon">{item.icon}</span>
             <span className="nav-label">{item.label}</span>
-          </button>
+          </NavLink>
         ))}
       </nav>
     </div>

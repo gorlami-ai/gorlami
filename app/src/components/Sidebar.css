@@ -58,6 +58,7 @@
   color: #ffffff;
   text-align: left;
   width: 100%;
+  text-decoration: none;
 }
 
 .nav-item:hover {

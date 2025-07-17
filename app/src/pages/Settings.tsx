@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useEffect, useState } from 'react';
-import './SettingsWindow.css';
+import './Settings.css';
 
 interface ShortcutConfig {
   transcription: string;
@@ -19,7 +19,7 @@ interface WebSocketConfig {
   reconnect_interval: number;
 }
 
-export function SettingsWindow() {
+export function Settings() {
   const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
     transcription: 'CommandOrControl+Ctrl+Space',
     edit: 'CommandOrControl+Ctrl+E',
