@@ -198,14 +198,14 @@ export function Settings() {
 
   if (loading) {
     return (
-      <div className="p-10 min-h-screen">
+      <div className="p-10 min-h-screen bg-white">
         <div className="text-center py-16 text-gray-500 text-lg">Loading settings...</div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 min-h-screen">
+    <div className="p-6 min-h-screen bg-white">
       <div className="mb-4">
         <h1 className="text-gray-900 text-2xl font-semibold">Settings</h1>
       </div>
