@@ -3,7 +3,7 @@ use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     webview::WebviewWindowBuilder,
-    Manager, Runtime, WindowEvent,
+    Manager, Runtime,
 };
 
 pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
@@ -18,8 +18,8 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     for device in devices {
         let item = MenuItem::with_id(
             app,
-            &format!("mic_{}", device.name),
-            &format!(
+            format!("mic_{}", device.name),
+            format!(
                 "{}{}",
                 device.name,
                 if device.is_default { " (Default)" } else { "" }
@@ -49,7 +49,7 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
 
     // Status item with actual username
     let username = whoami::username();
-    let status_text = format!("Hello, {} • Offline", username);
+    let status_text = format!("Hello, {username} • Offline");
     let status_item = MenuItem::with_id(app, "status", &status_text, false, None::<&str>)?;
 
     let separator = PredefinedMenuItem::separator(app)?;
@@ -88,7 +88,7 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
                     app.try_state::<std::sync::Arc<crate::simple_audio::SimpleAudioRecorder>>()
                 {
                     if let Err(e) = audio_recorder.select_device(device_name) {
-                        eprintln!("Failed to select audio device: {}", e);
+                        eprintln!("Failed to select audio device: {e}");
                     }
                 }
             }
@@ -114,7 +114,7 @@ fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>, tab: Option<&str>) {
     if let Some(window) = app.get_webview_window("main") {
         // If tab is specified, navigate to it
         if let Some(tab_name) = tab {
-            let _ = window.eval(&format!("window.location.hash = '#{}'", tab_name));
+            let _ = window.eval(format!("window.location.hash = '#{tab_name}'").as_str());
         }
         let _ = window.set_focus();
         let _ = window.show();
@@ -123,7 +123,7 @@ fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>, tab: Option<&str>) {
 
     // Create URL with optional hash for tab
     let url = match tab {
-        Some(tab_name) => format!("index.html#{}", tab_name),
+        Some(tab_name) => format!("index.html#{tab_name}"),
         None => "index.html".to_string(),
     };
 
@@ -153,7 +153,7 @@ fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>, tab: Option<&str>) {
             let _ = window.set_focus();
         }
         Err(e) => {
-            eprintln!("Failed to create main window: {}", e);
+            eprintln!("Failed to create main window: {e}");
         }
     }
 }
@@ -164,7 +164,7 @@ pub fn update_tray_status<R: Runtime>(
     is_online: bool,
 ) -> tauri::Result<()> {
     let status = if is_online { "Online" } else { "Offline" };
-    let _status_text = format!("Hello, {} • {}", username, status);
+    let _status_text = format!("Hello, {username} • {status}");
 
     // For now, we'll update this when we have access to the menu item
     // This will be improved in the next iteration

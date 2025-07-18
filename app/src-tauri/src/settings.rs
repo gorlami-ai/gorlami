@@ -5,21 +5,11 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct AppSettings {
     pub shortcuts: ShortcutConfig,
     pub websocket: WebSocketConfig,
     pub selected_microphone: Option<String>,
-}
-
-impl Default for AppSettings {
-    fn default() -> Self {
-        Self {
-            shortcuts: ShortcutConfig::default(),
-            websocket: WebSocketConfig::default(),
-            selected_microphone: None,
-        }
-    }
 }
 
 impl std::fmt::Debug for AppSettings {
@@ -72,10 +62,10 @@ pub fn save_settings(app: &AppHandle, settings: &AppSettings) -> Result<(), Stri
     let settings_path = get_settings_path(app);
 
     let content = serde_json::to_string_pretty(settings)
-        .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+        .map_err(|e| format!("Failed to serialize settings: {e}"))?;
 
     fs::write(&settings_path, content)
-        .map_err(|e| format!("Failed to write settings file: {}", e))?;
+        .map_err(|e| format!("Failed to write settings file: {e}"))?;
 
     Ok(())
 }
@@ -101,7 +91,7 @@ pub fn save_app_settings(
     {
         let manager = shortcut_state.lock().unwrap();
         if let Err(e) = manager.update_shortcuts(settings.shortcuts.clone()) {
-            eprintln!("Failed to update shortcuts: {}", e);
+            eprintln!("Failed to update shortcuts: {e}");
         }
     }
 
@@ -114,7 +104,7 @@ pub fn save_app_settings(
     // Apply audio settings
     if let Some(ref mic_name) = settings.selected_microphone {
         if let Err(e) = audio_state.inner().select_device(mic_name) {
-            eprintln!("Failed to select microphone '{}': {}", mic_name, e);
+            eprintln!("Failed to select microphone '{mic_name}': {e}");
         }
     }
 

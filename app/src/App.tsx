@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import './App.css';
 import { MainLayout } from './layouts/MainLayout';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { Dashboard } from './pages/Dashboard';
@@ -27,7 +26,7 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="app">
+      <div className="w-screen h-screen overflow-hidden bg-slate-950 text-slate-50">
         <Routes>
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Dashboard />} />

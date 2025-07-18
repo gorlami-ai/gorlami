@@ -63,7 +63,7 @@ impl<R: Runtime> ShortcutManager<R> {
 
                             // Show processing overlay
                             if let Err(e) = app_clone.emit("show_processing_overlay", ()) {
-                                eprintln!("Failed to show processing overlay: {}", e);
+                                eprintln!("Failed to show processing overlay: {e}");
                             }
 
                             // Toggle recording
@@ -72,20 +72,18 @@ impl<R: Runtime> ShortcutManager<R> {
                             {
                                 if recorder.is_recording() {
                                     if let Err(e) = recorder.stop_recording() {
-                                        eprintln!("Failed to stop recording: {}", e);
+                                        eprintln!("Failed to stop recording: {e}");
                                         let _ = app_clone.emit(
                                             "recording_error",
-                                            format!("Failed to stop recording: {}", e),
+                                            format!("Failed to stop recording: {e}"),
                                         );
                                     }
-                                } else {
-                                    if let Err(e) = recorder.start_recording() {
-                                        eprintln!("Failed to start recording: {}", e);
-                                        let _ = app_clone.emit(
-                                            "recording_error",
-                                            format!("Failed to start recording: {}", e),
-                                        );
-                                    }
+                                } else if let Err(e) = recorder.start_recording() {
+                                    eprintln!("Failed to start recording: {e}");
+                                    let _ = app_clone.emit(
+                                        "recording_error",
+                                        format!("Failed to start recording: {e}"),
+                                    );
                                 }
                             } else {
                                 eprintln!("Audio recorder not available");
@@ -97,14 +95,12 @@ impl<R: Runtime> ShortcutManager<R> {
                 ) {
                     Ok(_) => {
                         println!(
-                            "Transcription shortcut '{}' registered successfully",
-                            transcription_shortcut
+                            "Transcription shortcut '{transcription_shortcut}' registered successfully"
                         );
                     }
                     Err(e) => {
                         eprintln!(
-                            "Failed to register transcription shortcut '{}': {}",
-                            transcription_shortcut, e
+                            "Failed to register transcription shortcut '{transcription_shortcut}': {e}"
                         );
                         return Err(tauri::Error::Anyhow(anyhow::anyhow!(
                             "Failed to register transcription shortcut '{}': {}",
@@ -116,8 +112,7 @@ impl<R: Runtime> ShortcutManager<R> {
             }
             Err(e) => {
                 eprintln!(
-                    "Invalid transcription shortcut format '{}': {}",
-                    transcription_shortcut, e
+                    "Invalid transcription shortcut format '{transcription_shortcut}': {e}"
                 );
                 return Err(tauri::Error::Anyhow(anyhow::anyhow!(
                     "Invalid transcription shortcut format '{}': {}",
@@ -147,12 +142,11 @@ impl<R: Runtime> ShortcutManager<R> {
                     },
                 ) {
                     Ok(_) => {
-                        println!("Edit shortcut '{}' registered successfully", edit_shortcut);
+                        println!("Edit shortcut '{edit_shortcut}' registered successfully");
                     }
                     Err(e) => {
                         eprintln!(
-                            "Failed to register edit shortcut '{}': {}",
-                            edit_shortcut, e
+                            "Failed to register edit shortcut '{edit_shortcut}': {e}"
                         );
                         return Err(tauri::Error::Anyhow(anyhow::anyhow!(
                             "Failed to register edit shortcut '{}': {}",
@@ -163,7 +157,7 @@ impl<R: Runtime> ShortcutManager<R> {
                 }
             }
             Err(e) => {
-                eprintln!("Invalid edit shortcut format '{}': {}", edit_shortcut, e);
+                eprintln!("Invalid edit shortcut format '{edit_shortcut}': {e}");
                 return Err(tauri::Error::Anyhow(anyhow::anyhow!(
                     "Invalid edit shortcut format '{}': {}",
                     edit_shortcut,
@@ -177,9 +171,8 @@ impl<R: Runtime> ShortcutManager<R> {
 
     pub fn update_shortcuts(&self, new_config: ShortcutConfig) -> tauri::Result<()> {
         println!(
-            "Updating shortcuts from {:?} to {:?}",
-            self.get_config(),
-            new_config
+            "Updating shortcuts from {:?} to {new_config:?}",
+            self.get_config()
         );
 
         // Unregister all shortcuts
@@ -188,7 +181,7 @@ impl<R: Runtime> ShortcutManager<R> {
                 println!("Successfully unregistered all shortcuts");
             }
             Err(e) => {
-                eprintln!("Failed to unregister shortcuts: {}", e);
+                eprintln!("Failed to unregister shortcuts: {e}");
                 return Err(tauri::Error::Anyhow(anyhow::anyhow!(
                     "Failed to unregister shortcuts: {}",
                     e
@@ -205,17 +198,17 @@ impl<R: Runtime> ShortcutManager<R> {
         // Re-register with new config
         match self.register_shortcuts(&new_config) {
             Ok(_) => {
-                println!("Shortcuts updated successfully: {:?}", new_config);
+                println!("Shortcuts updated successfully: {new_config:?}");
                 // Emit success event
                 let _ = self.app.emit("shortcuts_updated", &new_config);
                 Ok(())
             }
             Err(e) => {
-                eprintln!("Failed to register new shortcuts: {}", e);
+                eprintln!("Failed to register new shortcuts: {e}");
                 // Emit error event
                 let _ = self.app.emit(
                     "shortcuts_error",
-                    format!("Failed to register shortcuts: {}", e),
+                    format!("Failed to register shortcuts: {e}"),
                 );
                 Err(e)
             }
@@ -244,7 +237,7 @@ pub fn update_shortcut_config(
     let manager = state.lock().unwrap();
     manager
         .update_shortcuts(config)
-        .map_err(|e| format!("Failed to update shortcuts: {}", e))?;
+        .map_err(|e| format!("Failed to update shortcuts: {e}"))?;
     Ok(())
 }
 
@@ -252,6 +245,6 @@ pub fn update_shortcut_config(
 pub fn validate_shortcut(shortcut: String) -> Result<bool, String> {
     match shortcut.parse::<Shortcut>() {
         Ok(_) => Ok(true),
-        Err(e) => Err(format!("Invalid shortcut format: {}", e)),
+        Err(e) => Err(format!("Invalid shortcut format: {e}")),
     }
 }

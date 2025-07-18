@@ -76,12 +76,12 @@ impl WebSocketClient {
         };
 
         let json = serde_json::to_string(&message)
-            .map_err(|e| format!("Failed to serialize message: {}", e))?;
+            .map_err(|e| format!("Failed to serialize message: {e}"))?;
 
         let tx_guard = self.tx.lock().unwrap();
         if let Some(tx) = tx_guard.as_ref() {
             tx.send(Message::Text(json))
-                .map_err(|e| format!("Failed to send message: {}", e))?;
+                .map_err(|e| format!("Failed to send message: {e}"))?;
         } else {
             return Err("WebSocket not connected".to_string());
         }
@@ -180,7 +180,7 @@ pub async fn connect_websocket(
                                 break;
                             }
                             Err(e) => {
-                                let error_msg = format!("WebSocket error: {}", e);
+                                let error_msg = format!("WebSocket error: {e}");
                                 {
                                     let client = state_for_read.lock().unwrap();
                                     let mut status = client.status.lock().unwrap();
@@ -204,7 +204,7 @@ pub async fn connect_websocket(
                 let write_task = tokio::spawn(async move {
                     while let Ok(msg) = rx.recv().await {
                         if let Err(e) = write.send(msg).await {
-                            eprintln!("Failed to send WebSocket message: {}", e);
+                            eprintln!("Failed to send WebSocket message: {e}");
                             break;
                         }
                     }
@@ -233,8 +233,8 @@ pub async fn connect_websocket(
         }
         Ok(Err(e)) => {
             // Connection failed
-            let error_msg = format!("Failed to connect to WebSocket: {}", e);
-            println!("Connection error: {}", error_msg);
+            let error_msg = format!("Failed to connect to WebSocket: {e}");
+            println!("Connection error: {error_msg}");
             
             // Update status to error
             {
@@ -266,7 +266,7 @@ pub async fn connect_websocket(
         Err(_) => {
             // Timeout occurred
             let error_msg = format!("Connection timeout after 10 seconds to: {}", config.url);
-            println!("Connection timeout: {}", error_msg);
+            println!("Connection timeout: {error_msg}");
             
             // Update status to error
             {
@@ -358,8 +358,8 @@ pub async fn reconnect_websocket(ws_client: &WebSocketClientState) -> Result<(),
         }
         Ok(Err(e)) => {
             // Connection failed
-            let error_msg = format!("Failed to reconnect to WebSocket: {}", e);
-            println!("Reconnection error: {}", error_msg);
+            let error_msg = format!("Failed to reconnect to WebSocket: {e}");
+            println!("Reconnection error: {error_msg}");
             
             // Update status to error
             {
@@ -374,7 +374,7 @@ pub async fn reconnect_websocket(ws_client: &WebSocketClientState) -> Result<(),
         Err(_) => {
             // Timeout occurred
             let error_msg = format!("Reconnection timeout after 10 seconds to: {}", config.url);
-            println!("Reconnection timeout: {}", error_msg);
+            println!("Reconnection timeout: {error_msg}");
             
             // Update status to error
             {

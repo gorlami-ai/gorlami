@@ -26,7 +26,7 @@ use websocket::{
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+    format!("Hello, {name}! You've been greeted from Rust!")
 }
 
 #[tauri::command]
@@ -54,7 +54,7 @@ fn show_processing_overlay(app: tauri::AppHandle) -> Result<(), String> {
     .skip_taskbar(true)
     .initialization_script("window.__TAURI_WINDOW_LABEL__ = 'processing_overlay';")
     .build()
-    .map_err(|e| format!("Failed to create processing overlay: {}", e))?;
+    .map_err(|e| format!("Failed to create processing overlay: {e}"))?;
 
     let _ = physical_size.set_focus();
     Ok(())
@@ -111,10 +111,10 @@ pub fn run() {
 
             // Load saved settings
             let saved_settings = settings::load_settings(app.handle());
-            println!("Loaded settings: {:?}", saved_settings);
+            println!("Loaded settings: {saved_settings:?}");
 
             // Initialize error handler
-            let error_handler = ErrorHandler::new(app.handle().clone());
+            let _error_handler = ErrorHandler::new(app.handle().clone());
 
             // Create system tray
             tray::create_tray(app.handle())?;
@@ -138,7 +138,7 @@ pub fn run() {
             // Set selected microphone if available
             if let Some(ref mic_name) = saved_settings.selected_microphone {
                 if let Err(e) = audio_recorder.select_device(mic_name) {
-                    eprintln!("Failed to select saved microphone '{}': {}", mic_name, e);
+                    eprintln!("Failed to select saved microphone '{mic_name}': {e}");
                 }
             }
 
@@ -156,7 +156,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             app.listen("show_processing_overlay", move |_event| {
                 if let Err(e) = show_processing_overlay(app_handle.clone()) {
-                    eprintln!("Failed to show processing overlay: {}", e);
+                    eprintln!("Failed to show processing overlay: {e}");
                 }
             });
 

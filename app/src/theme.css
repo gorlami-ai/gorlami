@@ -1,0 +1,57 @@
+@theme {
+  /* Custom spacing */
+  --spacing-70: 17.5rem; /* 280px for sidebar width */
+  
+  /* Custom animations */
+  --animate-slide-in: slideIn 0.3s ease-out;
+  --animate-pulse-ring: pulseRing 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes slideIn {
+  0% { 
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% { 
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulseRing {
+  0% { 
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.1);
+    opacity: 0.5;
+  }
+  100% { 
+    transform: scale(0.95);
+    opacity: 1;
+  }
+}
+
+/* Custom scrollbar utilities */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgb(100 116 139); /* slate-500 */
+    border-radius: 4px;
+    
+    &:hover {
+      background: rgb(71 85 105); /* slate-600 */
+    }
+  }
+}

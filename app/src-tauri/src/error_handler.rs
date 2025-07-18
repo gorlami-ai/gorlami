@@ -52,6 +52,7 @@ impl AppError {
         self
     }
 
+    #[allow(dead_code)]
     pub fn unrecoverable(mut self) -> Self {
         self.recoverable = false;
         self
@@ -69,7 +70,7 @@ impl ErrorHandler {
 
     pub fn handle_error(&self, error: AppError) {
         // Log the error
-        eprintln!("Error: {}", error);
+        eprintln!("Error: {error}");
 
         // Emit error event for UI to handle
         let _ = self.app.emit("app_error", &error);

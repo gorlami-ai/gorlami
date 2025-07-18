@@ -1,6 +1,5 @@
 import { listen } from '@tauri-apps/api/event';
 import { useEffect, useState } from 'react';
-import './ProcessingOverlay.css';
 
 type ProcessingState =
   | 'idle'
@@ -120,45 +119,45 @@ export function ProcessingOverlay() {
     switch (processingState) {
       case 'recording':
         return {
-          icon: <div className="pulse-circle"></div>,
+          icon: <div className="w-4 h-4 rounded-full bg-rose-500 animate-pulse-ring shadow-lg shadow-rose-500/30"></div>,
           text: 'Listening...',
-          className: 'recording-state',
+          className: 'flex items-center gap-3 text-white',
         };
       case 'transcribing':
         return {
-          icon: <div className="processing-spinner"></div>,
+          icon: <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>,
           text: 'Transcribing...',
-          className: 'processing-state',
+          className: 'flex items-center gap-3 text-white',
         };
       case 'enhancing':
         return {
-          icon: <div className="processing-spinner"></div>,
+          icon: <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>,
           text: 'Enhancing...',
-          className: 'processing-state',
+          className: 'flex items-center gap-3 text-white',
         };
       case 'pasting':
         return {
-          icon: <div className="processing-spinner"></div>,
+          icon: <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>,
           text: 'Pasting...',
-          className: 'processing-state',
+          className: 'flex items-center gap-3 text-white',
         };
       case 'complete':
         return {
-          icon: <div className="success-icon">✓</div>,
+          icon: <div className="w-4 h-4 flex items-center justify-center bg-emerald-500 text-white rounded-full text-xs font-bold animate-fade-in">✓</div>,
           text: 'Complete!',
-          className: 'success-state',
+          className: 'flex items-center gap-3 text-emerald-500 font-semibold',
         };
       case 'error':
         return {
-          icon: <div className="error-icon">⚠</div>,
+          icon: <div className="w-4 h-4 flex items-center justify-center bg-rose-500 text-white rounded-full text-xs font-bold">⚠</div>,
           text: errorMessage || 'Error occurred',
-          className: 'error-state',
+          className: 'flex items-center gap-3 text-rose-500 font-medium text-sm min-w-[220px]',
         };
       default:
         return {
-          icon: <div className="microphone-icon">🎤</div>,
+          icon: <div className="w-4 h-4 flex items-center justify-center text-base">🎤</div>,
           text: 'Ready',
-          className: 'idle-state',
+          className: 'flex items-center gap-3 text-white',
         };
     }
   };
@@ -171,20 +170,39 @@ export function ProcessingOverlay() {
   const stateDisplay = getStateDisplay();
 
   return (
-    <div className={`processing-overlay ${isVisible ? 'visible' : ''}`}>
-      <div className="processing-content">
-        <div className="status-indicator">
-          <div className={`connection-dot ${connectionStatus}`}></div>
+    <div className={`fixed top-0 left-0 w-screen h-screen flex items-start justify-end pt-2 pr-4 pointer-events-none z-[1000] transition-all duration-300 ease-in-out ${
+      isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'
+    }`}>
+      <div className="bg-slate-900/80 backdrop-blur-md rounded-2xl px-5 py-3 flex items-center gap-3 min-w-[200px] max-w-[300px] shadow-2xl border border-white/10 animate-slide-in pointer-events-auto transition-all duration-300 ease-in-out">
+        <div className="absolute top-2 right-2">
+          <div className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+            connectionStatus === 'connected' ? 'bg-emerald-500' :
+            connectionStatus === 'connecting' ? 'bg-amber-500 animate-pulse' :
+            'bg-rose-500'
+          }`}></div>
         </div>
 
         <div className={stateDisplay.className}>
           {stateDisplay.icon}
-          <span>{stateDisplay.text}</span>
+          <span className="text-sm font-medium tracking-wide">{stateDisplay.text}</span>
 
           {/* Audio level visualization when recording */}
           {processingState === 'recording' && (
-            <div className="audio-level-container">
-              <div className="audio-level-bar" style={{ width: `${audioLevel * 100}%` }} />
+            <div className="relative w-16 h-1 bg-white/20 rounded-full overflow-hidden ml-2">
+              <div 
+                className={`h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 rounded-full transition-all duration-100 ease-out origin-left ${
+                  audioLevel <= 0.1 ? 'scale-x-[0.1]' :
+                  audioLevel <= 0.2 ? 'scale-x-[0.2]' :
+                  audioLevel <= 0.3 ? 'scale-x-[0.3]' :
+                  audioLevel <= 0.4 ? 'scale-x-[0.4]' :
+                  audioLevel <= 0.5 ? 'scale-x-[0.5]' :
+                  audioLevel <= 0.6 ? 'scale-x-[0.6]' :
+                  audioLevel <= 0.7 ? 'scale-x-[0.7]' :
+                  audioLevel <= 0.8 ? 'scale-x-[0.8]' :
+                  audioLevel <= 0.9 ? 'scale-x-[0.9]' :
+                  'scale-x-100'
+                }`}
+              />
             </div>
           )}
         </div>

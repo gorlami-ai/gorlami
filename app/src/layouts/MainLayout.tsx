@@ -1,12 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
-import './MainLayout.css';
 
 export function MainLayout() {
   return (
-    <div className="main-layout">
+    <div className="flex h-screen w-screen bg-slate-950 overflow-hidden">
       <Sidebar />
-      <main className="main-content">
+      <main className="flex-1 overflow-y-auto bg-slate-950 scrollbar-thin">
         <Outlet />
       </main>
     </div>

@@ -11,7 +11,7 @@ pub struct ClipboardManager {
 impl ClipboardManager {
     pub fn new(app: AppHandle<tauri::Wry>) -> Result<Self, String> {
         let clipboard =
-            Clipboard::new().map_err(|e| format!("Failed to initialize clipboard: {}", e))?;
+            Clipboard::new().map_err(|e| format!("Failed to initialize clipboard: {e}"))?;
 
         Ok(Self { app, clipboard })
     }
@@ -19,7 +19,7 @@ impl ClipboardManager {
     pub fn copy_text(&mut self, text: &str) -> Result<(), String> {
         self.clipboard
             .set_text(text)
-            .map_err(|e| format!("Failed to copy text to clipboard: {}", e))?;
+            .map_err(|e| format!("Failed to copy text to clipboard: {e}"))?;
 
         println!("Copied text to clipboard: {} chars", text.len());
         Ok(())
@@ -57,11 +57,11 @@ impl ClipboardManager {
             .arg("-e")
             .arg(script)
             .output()
-            .map_err(|e| format!("Failed to execute AppleScript: {}", e))?;
+            .map_err(|e| format!("Failed to execute AppleScript: {e}"))?;
 
         if !output.status.success() {
             let error = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("AppleScript failed: {}", error));
+            return Err(format!("AppleScript failed: {error}"));
         }
 
         println!("Simulated paste keypress");
@@ -81,10 +81,10 @@ impl ClipboardManager {
 #[tauri::command]
 pub fn copy_to_clipboard(text: String) -> Result<(), String> {
     let mut clipboard =
-        Clipboard::new().map_err(|e| format!("Failed to initialize clipboard: {}", e))?;
+        Clipboard::new().map_err(|e| format!("Failed to initialize clipboard: {e}"))?;
     clipboard
         .set_text(&text)
-        .map_err(|e| format!("Failed to copy text to clipboard: {}", e))?;
+        .map_err(|e| format!("Failed to copy text to clipboard: {e}"))?;
 
     println!("Copied {} characters to clipboard", text.len());
     Ok(())
@@ -99,8 +99,8 @@ pub fn paste_at_cursor(text: String, app: AppHandle<tauri::Wry>) -> Result<(), S
 #[tauri::command]
 pub fn get_clipboard_text() -> Result<String, String> {
     let mut clipboard =
-        Clipboard::new().map_err(|e| format!("Failed to initialize clipboard: {}", e))?;
+        Clipboard::new().map_err(|e| format!("Failed to initialize clipboard: {e}"))?;
     clipboard
         .get_text()
-        .map_err(|e| format!("Failed to get text from clipboard: {}", e))
+        .map_err(|e| format!("Failed to get text from clipboard: {e}"))
 }

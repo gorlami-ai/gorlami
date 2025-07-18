@@ -1,5 +1,4 @@
 import { NavLink } from 'react-router-dom';
-import './Sidebar.css';
 
 export function Sidebar() {
   const menuItems = [
@@ -77,9 +76,9 @@ export function Sidebar() {
   ];
 
   return (
-    <div className="sidebar">
-      <div className="sidebar-header">
-        <div className="app-icon">
+    <div className="w-70 h-screen bg-slate-900 flex flex-col flex-shrink-0 border-r border-slate-800">
+      <div className="flex items-center px-5 pt-6 pb-5 mb-2">
+        <div className="w-8 h-8 flex items-center justify-center bg-white rounded-lg text-slate-900 mr-3">
           <svg
             width="16"
             height="16"
@@ -92,18 +91,24 @@ export function Sidebar() {
             <path d="M12 8v4l3 3" />
           </svg>
         </div>
-        <h2>Gorlami</h2>
+        <h2 className="text-xl font-semibold text-white">Gorlami</h2>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className="flex-1 flex flex-col gap-0.5 px-4 py-2">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            className={({ isActive }) => 
+              `flex items-center px-4 py-3 rounded-lg transition-all duration-200 text-base font-medium text-white w-full no-underline ${
+                isActive 
+                  ? 'bg-slate-700 hover:bg-slate-600' 
+                  : 'hover:bg-white/10'
+              }`
+            }
           >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
+            <span className="mr-3 w-5 h-5 flex items-center justify-center">{item.icon}</span>
+            <span className="flex-1">{item.label}</span>
           </NavLink>
         ))}
       </nav>

@@ -54,7 +54,7 @@ impl SimpleAudioRecorder {
         // Get the default input configuration
         let config = device
             .default_input_config()
-            .map_err(|e| format!("Failed to get default input config: {}", e))?;
+            .map_err(|e| format!("Failed to get default input config: {e}"))?;
 
         let sample_rate = config.sample_rate().0;
         let channels = config.channels();
@@ -62,8 +62,7 @@ impl SimpleAudioRecorder {
         let stream_config: StreamConfig = config.into();
 
         println!(
-            "Recording with sample rate: {}, channels: {}",
-            sample_rate, channels
+            "Recording with sample rate: {sample_rate}, channels: {channels}"
         );
 
         // Store config for later use
@@ -124,7 +123,7 @@ impl SimpleAudioRecorder {
                         }
                     },
                     move |err| {
-                        eprintln!("Audio input error: {}", err);
+                        eprintln!("Audio input error: {err}");
                         let _ = app_error.emit("audio_error", err.to_string());
                     },
                     None,
@@ -178,7 +177,7 @@ impl SimpleAudioRecorder {
                         }
                     },
                     move |err| {
-                        eprintln!("Audio input error: {}", err);
+                        eprintln!("Audio input error: {err}");
                         let _ = app_error.emit("audio_error", err.to_string());
                     },
                     None,
@@ -232,7 +231,7 @@ impl SimpleAudioRecorder {
                         }
                     },
                     move |err| {
-                        eprintln!("Audio input error: {}", err);
+                        eprintln!("Audio input error: {err}");
                         let _ = app_error.emit("audio_error", err.to_string());
                     },
                     None,
@@ -242,12 +241,12 @@ impl SimpleAudioRecorder {
                 return Err("Unsupported sample format".to_string());
             }
         }
-        .map_err(|e| format!("Failed to build input stream: {}", e))?;
+        .map_err(|e| format!("Failed to build input stream: {e}"))?;
 
         // Start the stream
         stream
             .play()
-            .map_err(|e| format!("Failed to start stream: {}", e))?;
+            .map_err(|e| format!("Failed to start stream: {e}"))?;
 
         // Set recording flag
         *recording = true;
@@ -328,7 +327,7 @@ pub fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
     // Enumerate input devices
     let input_devices = host
         .input_devices()
-        .map_err(|e| format!("Failed to enumerate input devices: {}", e))?;
+        .map_err(|e| format!("Failed to enumerate input devices: {e}"))?;
 
     for device in input_devices {
         if let Ok(name) = device.name() {
