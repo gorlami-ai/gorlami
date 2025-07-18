@@ -241,10 +241,10 @@ export function Settings() {
   }
 
   return (
-    <div className="p-10 bg-white min-h-screen scrollbar-thin">
-      <div className="mb-10">
-        <h1 className="text-gray-900 mb-2 text-3xl font-bold">Settings</h1>
-        <p className="text-gray-600 text-base">Configure your voice assistant settings</p>
+    <div className="p-6 bg-white min-h-screen scrollbar-thin">
+      <div className="mb-8">
+        <h1 className="text-gray-900 text-xl font-semibold">Settings</h1>
+        <p className="text-gray-500 text-sm mt-1">Configure your voice assistant settings</p>
       </div>
 
       <div className="max-w-4xl mx-auto">
