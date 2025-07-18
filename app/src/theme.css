@@ -47,11 +47,11 @@
   }
   
   &::-webkit-scrollbar-thumb {
-    background: rgb(100 116 139); /* slate-500 */
+    background: rgb(209 213 219); /* gray-300 */
     border-radius: 4px;
     
     &:hover {
-      background: rgb(71 85 105); /* slate-600 */
+      background: rgb(156 163 175); /* gray-400 */
     }
   }
 }
