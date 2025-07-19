@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
 interface ShortcutFieldProps {
   value: string;
@@ -47,6 +48,7 @@ export function ShortcutField({ value, onChange, placeholder = 'Click to record'
   const [isRecording, setIsRecording] = useState(false);
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const fieldRef = useRef<HTMLDivElement>(null);
+  const shortcutsDisabledRef = useRef(false);
 
   // Parse the shortcut string into display format
   const formatShortcut = (shortcut: string): string[] => {
@@ -90,6 +92,17 @@ export function ShortcutField({ value, onChange, placeholder = 'Click to record'
   useEffect(() => {
     if (!isRecording) return;
 
+    // Disable global shortcuts while recording
+    const disableShortcuts = async () => {
+      try {
+        await invoke('disable_shortcuts');
+        shortcutsDisabledRef.current = true;
+      } catch (error) {
+        console.error('Failed to disable shortcuts:', error);
+      }
+    };
+    disableShortcuts();
+
     const handleKeyDown = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
@@ -113,6 +126,9 @@ export function ShortcutField({ value, onChange, placeholder = 'Click to record'
         } else if (e.code === 'Fn') {
           // Function key (fn)
           newKeys.add('fn');
+        } else if (e.key === 'Fn' || e.code === 'Fn' || e.key.toLowerCase() === 'fn') {
+          // Handle different ways fn might be detected
+          newKeys.add('fn');
         } else if (e.key.length === 1) {
           newKeys.add(e.key.toUpperCase());
         } else {
@@ -123,20 +139,40 @@ export function ShortcutField({ value, onChange, placeholder = 'Click to record'
       setKeys(newKeys);
     };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
+    const handleKeyUp = async (e: KeyboardEvent) => {
       // Stop recording when all keys are released
       if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && keys.size > 0) {
         const shortcut = keysToShortcut(keys);
         onChange(shortcut);
         setIsRecording(false);
         setKeys(new Set());
+        
+        // Re-enable shortcuts
+        if (shortcutsDisabledRef.current) {
+          try {
+            await invoke('enable_shortcuts');
+            shortcutsDisabledRef.current = false;
+          } catch (error) {
+            console.error('Failed to re-enable shortcuts:', error);
+          }
+        }
       }
     };
 
-    const handleBlur = () => {
+    const handleBlur = async () => {
       // Cancel recording if clicked outside
       setIsRecording(false);
       setKeys(new Set());
+      
+      // Re-enable shortcuts if they were disabled
+      if (shortcutsDisabledRef.current) {
+        try {
+          await invoke('enable_shortcuts');
+          shortcutsDisabledRef.current = false;
+        } catch (error) {
+          console.error('Failed to re-enable shortcuts:', error);
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -147,6 +183,14 @@ export function ShortcutField({ value, onChange, placeholder = 'Click to record'
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       fieldRef.current?.removeEventListener('blur', handleBlur);
+      
+      // Ensure shortcuts are re-enabled on cleanup
+      if (shortcutsDisabledRef.current) {
+        invoke('enable_shortcuts').catch((error) => {
+          console.error('Failed to re-enable shortcuts on cleanup:', error);
+        });
+        shortcutsDisabledRef.current = false;
+      }
     };
   }, [isRecording, keys, onChange]);
 

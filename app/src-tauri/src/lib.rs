@@ -10,8 +10,8 @@ use clipboard::{copy_to_clipboard, get_clipboard_text, paste_at_cursor};
 use error_handler::{clear_error_logs, get_error_logs, report_error, ErrorHandler};
 use settings::{get_app_settings, reset_app_settings, save_app_settings};
 use shortcuts::{
-    get_shortcut_config, update_shortcut_config, validate_shortcut, ShortcutManager,
-    ShortcutManagerState,
+    disable_shortcuts, enable_shortcuts, get_shortcut_config, update_shortcut_config,
+    validate_shortcut, ShortcutManager, ShortcutManagerState,
 };
 use simple_audio::{
     get_audio_data, get_audio_devices, is_recording, select_audio_device, start_recording,
@@ -78,6 +78,8 @@ pub fn run() {
             get_shortcut_config,
             update_shortcut_config,
             validate_shortcut,
+            disable_shortcuts,
+            enable_shortcuts,
             get_audio_devices,
             select_audio_device,
             start_recording,

@@ -6,6 +6,8 @@ import { ShortcutField } from '../components/ShortcutField';
 interface ShortcutConfig {
   transcription: string;
   edit: string;
+  transcription_enabled: boolean;
+  edit_enabled: boolean;
 }
 
 interface AudioDevice {
@@ -23,6 +25,8 @@ export function Settings() {
   const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
     transcription: 'fn',
     edit: 'fn+Shift',
+    transcription_enabled: true,
+    edit_enabled: true,
   });
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('');
@@ -103,6 +107,27 @@ export function Settings() {
       console.error('Failed to load settings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleShortcut = async (key: 'transcription_enabled' | 'edit_enabled', value: boolean) => {
+    const newShortcuts = { ...shortcuts, [key]: value };
+    setShortcuts(newShortcuts);
+    
+    try {
+      // Update shortcuts configuration
+      await invoke('update_shortcut_config', { config: newShortcuts });
+      
+      // Save to persistent settings
+      const currentSettings = await invoke<any>('get_app_settings');
+      await invoke('save_app_settings', {
+        settings: {
+          ...currentSettings,
+          shortcuts: newShortcuts,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to toggle shortcut:', error);
     }
   };
 
@@ -217,7 +242,16 @@ export function Settings() {
           
           <div className="space-y-0">
             <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-              <label className="text-gray-900 text-sm font-medium">Transcribe</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="transcription-enabled"
+                  checked={shortcuts.transcription_enabled}
+                  onChange={(e) => handleToggleShortcut('transcription_enabled', e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <label htmlFor="transcription-enabled" className="text-gray-900 text-sm font-medium">Transcribe</label>
+              </div>
               <ShortcutField
                 value={shortcuts.transcription}
                 onChange={(value) => handleShortcutChange('transcription', value)}
@@ -226,7 +260,16 @@ export function Settings() {
             </div>
             
             <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-              <label className="text-gray-900 text-sm font-medium">Edit</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="edit-enabled"
+                  checked={shortcuts.edit_enabled}
+                  onChange={(e) => handleToggleShortcut('edit_enabled', e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <label htmlFor="edit-enabled" className="text-gray-900 text-sm font-medium">Edit</label>
+              </div>
               <ShortcutField
                 value={shortcuts.edit}
                 onChange={(value) => handleShortcutChange('edit', value)}
