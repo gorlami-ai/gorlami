@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useEffect, useState, useRef } from 'react';
 import { ShortcutField } from '../components/ShortcutField';
+import { getWebSocketUrl } from '../config/env';
 
 interface ShortcutConfig {
   transcription: string;
@@ -32,7 +33,7 @@ export function Settings() {
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [websocketConfig, setWebsocketConfig] = useState<WebSocketConfig>({
-    url: 'ws://localhost:8000/ws/transcribe',
+    url: getWebSocketUrl(),
     auto_reconnect: true,
     reconnect_interval: 5,
   });
@@ -321,7 +322,7 @@ export function Settings() {
                     saveWebSocketConfig();
                   }, 1000);
                 }}
-                placeholder="ws://localhost:8000/ws/transcribe"
+                placeholder={getWebSocketUrl()}
                 className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 min-w-[250px]"
               />
             </div>
