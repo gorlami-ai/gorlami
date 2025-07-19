@@ -10,6 +10,7 @@ pub struct WebSocketConfig {
     pub url: String,
     pub auto_reconnect: bool,
     pub reconnect_interval: u64, // seconds
+    pub auth_token: Option<String>,
 }
 
 impl Default for WebSocketConfig {
@@ -18,6 +19,7 @@ impl Default for WebSocketConfig {
             url: "ws://localhost:8000/ws/transcribe".to_string(),
             auto_reconnect: true,
             reconnect_interval: 5,
+            auth_token: None,
         }
     }
 }
@@ -151,7 +153,19 @@ pub async fn connect_websocket(
             {
                 let client = state.lock().unwrap();
                 let mut sender = client.tx.lock().unwrap();
-                *sender = Some(tx);
+                *sender = Some(tx.clone());
+            }
+            
+            // Send authentication message if token is provided
+            if let Some(auth_token) = &config.auth_token {
+                let auth_msg = serde_json::json!({
+                    "type": "auth",
+                    "token": auth_token
+                });
+                
+                if let Err(e) = tx.send(Message::Text(auth_msg.to_string())) {
+                    eprintln!("Failed to send auth message: {e}");
+                }
             }
             
             let app_clone = app.clone();

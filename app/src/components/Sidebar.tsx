@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { UserMenu } from './UserMenu';
 
 export function Sidebar() {
   const menuItems = [
@@ -112,6 +113,11 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* User Section */}
+      <div className="mt-auto border-t border-gray-200">
+        <UserMenu />
+      </div>
     </div>
   );
 }

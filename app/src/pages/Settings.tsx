@@ -3,6 +3,9 @@ import { listen } from '@tauri-apps/api/event';
 import { useEffect, useState, useRef } from 'react';
 import { ShortcutField } from '../components/ShortcutField';
 import { getWebSocketUrl } from '../config/env';
+import { useAutoUpdater } from '../hooks/useAutoUpdater';
+import { getVersion } from '@tauri-apps/api/app';
+import { websocketService } from '../services/websocket';
 
 interface ShortcutConfig {
   transcription: string;
@@ -38,10 +41,20 @@ export function Settings() {
     reconnect_interval: 5,
   });
   const [websocketStatus, setWebsocketStatus] = useState<string>('Disconnected');
+  const [currentVersion, setCurrentVersion] = useState<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const { 
+    isChecking, 
+    lastCheck, 
+    checkForUpdates 
+  } = useAutoUpdater();
 
   useEffect(() => {
     loadSettings();
+    
+    // Load app version
+    getVersion().then(setCurrentVersion);
 
     // Listen for WebSocket status changes
     const unlistenWebSocketStatus = listen('websocket_status', (event: any) => {
@@ -208,7 +221,7 @@ export function Settings() {
 
   const connectWebSocket = async () => {
     try {
-      await invoke('connect_websocket');
+      await websocketService.connectWithAuth();
     } catch (error) {
       console.error('Failed to connect WebSocket:', error);
     }
@@ -216,7 +229,7 @@ export function Settings() {
 
   const disconnectWebSocket = async () => {
     try {
-      await invoke('disconnect_websocket');
+      await websocketService.disconnect();
     } catch (error) {
       console.error('Failed to disconnect WebSocket:', error);
     }
@@ -342,6 +355,36 @@ export function Settings() {
                   className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-100 transition-colors"
                 >
                   {websocketStatus === 'Connected' ? 'Disconnect' : 'Connect'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Updates Section */}
+        <section className="mb-6">
+          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">Updates</h2>
+          
+          <div className="space-y-0">
+            <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <label className="text-gray-900 text-sm font-medium">Current Version</label>
+              <span className="text-sm text-gray-700">{currentVersion || 'Loading...'}</span>
+            </div>
+            
+            <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <label className="text-gray-900 text-sm font-medium">Check for Updates</label>
+              <div className="flex items-center gap-2">
+                {lastCheck && (
+                  <span className="text-xs text-gray-500">
+                    Last checked: {lastCheck.toLocaleTimeString()}
+                  </span>
+                )}
+                <button
+                  onClick={() => checkForUpdates(true)}
+                  disabled={isChecking}
+                  className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isChecking ? 'Checking...' : 'Check Now'}
                 </button>
               </div>
             </div>

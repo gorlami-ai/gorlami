@@ -4,10 +4,13 @@ mod settings;
 mod shortcuts;
 mod simple_audio;
 mod tray;
+mod updater;
 mod websocket;
+mod oauth;
 
 use clipboard::{copy_to_clipboard, get_clipboard_text, paste_at_cursor};
 use error_handler::{clear_error_logs, get_error_logs, report_error, ErrorHandler};
+use oauth::start_oauth_server;
 use settings::{get_app_settings, reset_app_settings, save_app_settings};
 use shortcuts::{
     disable_shortcuts, enable_shortcuts, get_shortcut_config, update_shortcut_config,
@@ -19,6 +22,9 @@ use simple_audio::{
 };
 use std::sync::{Arc, Mutex};
 use tauri::{Listener, Manager, WebviewUrl, WebviewWindowBuilder};
+use updater::{
+    check_for_updates, download_and_install_update, get_update_info, check_and_prompt_for_update,
+};
 use websocket::{
     connect_websocket, disconnect_websocket, get_websocket_config, get_websocket_status,
     send_audio_data, update_websocket_config, WebSocketClient,
@@ -73,6 +79,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_oauth::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             get_shortcut_config,
@@ -102,7 +112,12 @@ pub fn run() {
             get_clipboard_text,
             get_error_logs,
             clear_error_logs,
-            report_error
+            report_error,
+            check_for_updates,
+            download_and_install_update,
+            get_update_info,
+            check_and_prompt_for_update,
+            start_oauth_server
         ])
         .setup(|app| {
             // Hide dock icon on macOS
