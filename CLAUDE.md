@@ -12,10 +12,10 @@ The system consists of two main components:
 2. **Tauri macOS app** (`/app`) - Native desktop application with React frontend and Rust backend. We are only developing for MacOS!
 
 ### Tech Stack
-- **Frontend**: Tauri + React 18.3.1 + TypeScript + Vite
+- **Frontend**: Tauri + React + TypeScript + Vite + tailwind
 - **Backend**: Python 3.13 + FastAPI + Poetry
 - **AI Services**: Deepgram (STT), Azure OpenAI (LLM)
-- **Communication**: WebSockets for real-time streaming, and REST for others
+- **Communication**: REST HTTP
 
 ### Project structure
 ```
@@ -27,7 +27,7 @@ gorlami/
 │   │   └── Cargo.toml    # Rust dependencies
 │   └── package.json      # Node dependencies
 └── backend/               # Python FastAPI server
-    ├── main.py           # WebSocket server
+    ├── main.py           # API
     └── pyproject.toml    # Python dependencies
 ```
 
