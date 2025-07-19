@@ -41,17 +41,17 @@ class Logger {
 
   private formatMessage(level: LogLevel, message: string, ...args: any[]): [string, ...any[]] {
     let prefix = '';
-    
+
     if (this.config.includeTimestamp) {
       prefix += `[${new Date().toISOString()}] `;
     }
-    
+
     prefix += `[${level.toUpperCase()}]`;
-    
+
     if (this.config.includeContext && this.context) {
       prefix += ` [${this.context}]`;
     }
-    
+
     return [`${prefix} ${message}`, ...args];
   }
 

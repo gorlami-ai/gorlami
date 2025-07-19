@@ -1,4 +1,3 @@
-
 export function Activity() {
   return (
     <div className="p-6 min-h-screen bg-white">

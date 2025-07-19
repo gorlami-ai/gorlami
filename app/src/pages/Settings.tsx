@@ -1,11 +1,12 @@
+import { getVersion } from '@tauri-apps/api/app';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ShortcutField } from '../components/ShortcutField';
 import { getWebSocketUrl } from '../config/env';
 import { useAutoUpdater } from '../hooks/useAutoUpdater';
-import { getVersion } from '@tauri-apps/api/app';
 import { websocketService } from '../services/websocket';
+import { createLogger } from '../utils/logger';
 
 interface ShortcutConfig {
   transcription: string;
@@ -25,6 +26,8 @@ interface WebSocketConfig {
   reconnect_interval: number;
 }
 
+const logger = createLogger('Settings');
+
 export function Settings() {
   const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
     transcription: 'fn',
@@ -43,16 +46,12 @@ export function Settings() {
   const [websocketStatus, setWebsocketStatus] = useState<string>('Disconnected');
   const [currentVersion, setCurrentVersion] = useState<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const { 
-    isChecking, 
-    lastCheck, 
-    checkForUpdates 
-  } = useAutoUpdater();
+
+  const { isChecking, lastCheck, checkForUpdates } = useAutoUpdater();
 
   useEffect(() => {
     loadSettings();
-    
+
     // Load app version
     getVersion().then(setCurrentVersion);
 
@@ -69,11 +68,11 @@ export function Settings() {
 
     // Listen for shortcut feedback
     const unlistenShortcutUpdated = listen('shortcuts_updated', (event: any) => {
-      console.log('Shortcuts updated successfully:', event.payload);
+      logger.info('Shortcuts updated successfully:', event.payload);
     });
 
     const unlistenShortcutError = listen('shortcuts_error', (event: any) => {
-      console.error('Shortcut error:', event.payload);
+      logger.error('Shortcut error:', event.payload);
     });
 
     return () => {
@@ -118,20 +117,23 @@ export function Settings() {
         setWebsocketStatus('Connected');
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      logger.error('Failed to load settings:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleShortcut = async (key: 'transcription_enabled' | 'edit_enabled', value: boolean) => {
+  const handleToggleShortcut = async (
+    key: 'transcription_enabled' | 'edit_enabled',
+    value: boolean
+  ) => {
     const newShortcuts = { ...shortcuts, [key]: value };
     setShortcuts(newShortcuts);
-    
+
     try {
       // Update shortcuts configuration
       await invoke('update_shortcut_config', { config: newShortcuts });
-      
+
       // Save to persistent settings
       const currentSettings = await invoke<any>('get_app_settings');
       await invoke('save_app_settings', {
@@ -141,7 +143,7 @@ export function Settings() {
         },
       });
     } catch (error) {
-      console.error('Failed to toggle shortcut:', error);
+      logger.error('Failed to toggle shortcut:', error);
     }
   };
 
@@ -152,13 +154,13 @@ export function Settings() {
     if (value.trim()) {
       try {
         await invoke('validate_shortcut', { shortcut: value });
-        console.log(`Valid shortcut: ${value}`);
-        
+        logger.debug(`Valid shortcut: ${value}`);
+
         // Auto-save shortcuts
-        await invoke('update_shortcut_config', { 
-          config: { ...shortcuts, [type]: value } 
+        await invoke('update_shortcut_config', {
+          config: { ...shortcuts, [type]: value },
         });
-        
+
         // Save to persistent settings
         const currentSettings = await invoke<any>('get_app_settings');
         await invoke('save_app_settings', {
@@ -168,7 +170,7 @@ export function Settings() {
           },
         });
       } catch (error) {
-        console.warn(`Invalid shortcut format: ${value} - ${error}`);
+        logger.warn(`Invalid shortcut format: ${value} - ${error}`);
       }
     }
   };
@@ -187,9 +189,9 @@ export function Settings() {
         },
       });
 
-      console.log('Audio device saved');
+      logger.info('Audio device saved');
     } catch (error) {
-      console.error('Failed to select audio device:', error);
+      logger.error('Failed to select audio device:', error);
     }
   };
 
@@ -213,9 +215,9 @@ export function Settings() {
         },
       });
 
-      console.log('WebSocket configuration saved');
+      logger.info('WebSocket configuration saved');
     } catch (error) {
-      console.error('Failed to save WebSocket configuration:', error);
+      logger.error('Failed to save WebSocket configuration:', error);
     }
   };
 
@@ -223,7 +225,7 @@ export function Settings() {
     try {
       await websocketService.connectWithAuth();
     } catch (error) {
-      console.error('Failed to connect WebSocket:', error);
+      logger.error('Failed to connect WebSocket:', error);
     }
   };
 
@@ -231,7 +233,7 @@ export function Settings() {
     try {
       await websocketService.disconnect();
     } catch (error) {
-      console.error('Failed to disconnect WebSocket:', error);
+      logger.error('Failed to disconnect WebSocket:', error);
     }
   };
 
@@ -252,8 +254,10 @@ export function Settings() {
       <div className="max-w-2xl">
         {/* Keyboard Shortcuts Section */}
         <section className="mb-6">
-          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">Keyboard Shortcuts</h2>
-          
+          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
+            Keyboard Shortcuts
+          </h2>
+
           <div className="space-y-0">
             <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
               <div className="flex items-center gap-3">
@@ -264,7 +268,12 @@ export function Settings() {
                   onChange={(e) => handleToggleShortcut('transcription_enabled', e.target.checked)}
                   className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 />
-                <label htmlFor="transcription-enabled" className="text-gray-900 text-sm font-medium">Transcribe</label>
+                <label
+                  htmlFor="transcription-enabled"
+                  className="text-gray-900 text-sm font-medium"
+                >
+                  Transcribe
+                </label>
               </div>
               <ShortcutField
                 value={shortcuts.transcription}
@@ -272,7 +281,7 @@ export function Settings() {
                 placeholder="Click to set shortcut"
               />
             </div>
-            
+
             <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <input
@@ -282,7 +291,9 @@ export function Settings() {
                   onChange={(e) => handleToggleShortcut('edit_enabled', e.target.checked)}
                   className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 />
-                <label htmlFor="edit-enabled" className="text-gray-900 text-sm font-medium">Edit</label>
+                <label htmlFor="edit-enabled" className="text-gray-900 text-sm font-medium">
+                  Edit
+                </label>
               </div>
               <ShortcutField
                 value={shortcuts.edit}
@@ -296,7 +307,7 @@ export function Settings() {
         {/* Audio Section */}
         <section className="mb-6">
           <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">Audio</h2>
-          
+
           <div className="space-y-0">
             <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
               <label className="text-gray-900 text-sm font-medium">Microphone</label>
@@ -317,8 +328,10 @@ export function Settings() {
 
         {/* Backend Section */}
         <section className="mb-6">
-          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">Backend</h2>
-          
+          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
+            Backend
+          </h2>
+
           <div className="space-y-0">
             <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
               <label className="text-gray-900 text-sm font-medium">Server URL</label>
@@ -339,13 +352,15 @@ export function Settings() {
                 className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 min-w-[250px]"
               />
             </div>
-            
+
             <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
               <label className="text-gray-900 text-sm font-medium">Connection</label>
               <div className="flex items-center gap-2">
                 <span
                   className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    websocketStatus === 'Connected' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                    websocketStatus === 'Connected'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-700'
                   }`}
                 >
                   {websocketStatus}
@@ -363,14 +378,16 @@ export function Settings() {
 
         {/* Updates Section */}
         <section className="mb-6">
-          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">Updates</h2>
-          
+          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
+            Updates
+          </h2>
+
           <div className="space-y-0">
             <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
               <label className="text-gray-900 text-sm font-medium">Current Version</label>
               <span className="text-sm text-gray-700">{currentVersion || 'Loading...'}</span>
             </div>
-            
+
             <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
               <label className="text-gray-900 text-sm font-medium">Check for Updates</label>
               <div className="flex items-center gap-2">

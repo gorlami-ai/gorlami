@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { GitHubIcon, GoogleIcon, GorlamiLogoIcon } from '../assets/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { GorlamiLogoIcon, GoogleIcon, GitHubIcon } from '../assets/icons';
 
 export function Login() {
   const [loading, setLoading] = useState(false);
@@ -110,7 +110,7 @@ export function Login() {
               disabled={loading}
               className="w-full py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Please wait...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+              {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
             </button>
 
             <p className="text-center text-sm text-gray-600">
