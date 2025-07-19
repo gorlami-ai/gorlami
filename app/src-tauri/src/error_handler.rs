@@ -70,7 +70,7 @@ impl ErrorHandler {
 
     pub fn handle_error(&self, error: AppError) {
         // Log the error
-        eprintln!("Error: {error}");
+        log::error!("Error: {error}");
 
         // Emit error event for UI to handle
         let _ = self.app.emit("app_error", &error);

@@ -61,7 +61,7 @@ impl SimpleAudioRecorder {
         let sample_format = config.sample_format();
         let stream_config: StreamConfig = config.into();
 
-        println!(
+        log::info!(
             "Recording with sample rate: {sample_rate}, channels: {channels}"
         );
 
@@ -123,7 +123,7 @@ impl SimpleAudioRecorder {
                         }
                     },
                     move |err| {
-                        eprintln!("Audio input error: {err}");
+                        log::error!("Audio input error: {err}");
                         let _ = app_error.emit("audio_error", err.to_string());
                     },
                     None,
@@ -177,7 +177,7 @@ impl SimpleAudioRecorder {
                         }
                     },
                     move |err| {
-                        eprintln!("Audio input error: {err}");
+                        log::error!("Audio input error: {err}");
                         let _ = app_error.emit("audio_error", err.to_string());
                     },
                     None,
@@ -231,7 +231,7 @@ impl SimpleAudioRecorder {
                         }
                     },
                     move |err| {
-                        eprintln!("Audio input error: {err}");
+                        log::error!("Audio input error: {err}");
                         let _ = app_error.emit("audio_error", err.to_string());
                     },
                     None,
@@ -254,7 +254,7 @@ impl SimpleAudioRecorder {
         // Emit recording started event
         let _ = self.app.emit("recording_started", ());
 
-        println!("Recording started");
+        log::info!("Recording started");
 
         // Keep the stream alive by forgetting it (for now)
         // This is a simplified approach - in production, we'd need better stream management
@@ -289,7 +289,7 @@ impl SimpleAudioRecorder {
             let _ = self.app.emit("send_audio_to_websocket", &audio_bytes);
         }
 
-        println!("Recording stopped, {} bytes captured", audio_bytes.len());
+        log::info!("Recording stopped, {} bytes captured", audio_bytes.len());
 
         Ok(())
     }

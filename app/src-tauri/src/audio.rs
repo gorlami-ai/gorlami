@@ -158,7 +158,7 @@ impl AudioRecorder {
     where
         T: cpal::Sample + cpal::SizedSample + Send + 'static,
     {
-        let err_fn = |err| eprintln!("Stream error: {}", err);
+        let err_fn = |err| log::error!("Stream error: {}", err);
 
         let stream = device
             .build_input_stream(
@@ -208,7 +208,7 @@ pub fn start_recording(
     std::thread::spawn(move || {
         while let Ok(samples) = receiver.recv() {
             // Audio data received, will be sent to WebSocket later
-            println!("Received {} audio samples", samples.len());
+            log::debug!("Received {} audio samples", samples.len());
         }
     });
     

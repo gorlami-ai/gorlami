@@ -91,7 +91,7 @@ pub fn save_app_settings(
     {
         let manager = shortcut_state.lock().unwrap();
         if let Err(e) = manager.update_shortcuts(settings.shortcuts.clone()) {
-            eprintln!("Failed to update shortcuts: {e}");
+            log::error!("Failed to update shortcuts: {e}");
         }
     }
 
@@ -104,11 +104,11 @@ pub fn save_app_settings(
     // Apply audio settings
     if let Some(ref mic_name) = settings.selected_microphone {
         if let Err(e) = audio_state.inner().select_device(mic_name) {
-            eprintln!("Failed to select microphone '{mic_name}': {e}");
+            log::error!("Failed to select microphone '{mic_name}': {e}");
         }
     }
 
-    println!("Settings saved and applied successfully");
+    log::info!("Settings saved and applied successfully");
     Ok(())
 }
 

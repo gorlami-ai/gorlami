@@ -88,7 +88,7 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
                     app.try_state::<std::sync::Arc<crate::simple_audio::SimpleAudioRecorder>>()
                 {
                     if let Err(e) = audio_recorder.select_device(device_name) {
-                        eprintln!("Failed to select audio device: {e}");
+                        log::error!("Failed to select audio device: {e}");
                     }
                 }
             }
@@ -153,7 +153,7 @@ fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>, tab: Option<&str>) {
             let _ = window.set_focus();
         }
         Err(e) => {
-            eprintln!("Failed to create main window: {e}");
+            log::error!("Failed to create main window: {e}");
         }
     }
 }

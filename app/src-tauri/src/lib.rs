@@ -76,6 +76,22 @@ fn hide_processing_overlay(app: tauri::AppHandle) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize logger with environment-based configuration
+    let log_level = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "info"
+    };
+    
+    std::env::set_var("RUST_LOG", 
+        std::env::var("RUST_LOG")
+            .unwrap_or_else(|_| format!("gorlami={log_level},tauri={log_level}"))
+    );
+    
+    env_logger::init();
+    log::info!("Starting Gorlami application");
+    log::debug!("Debug logging enabled");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -128,7 +144,7 @@ pub fn run() {
 
             // Load saved settings
             let saved_settings = settings::load_settings(app.handle());
-            println!("Loaded settings: {saved_settings:?}");
+            log::info!("Loaded settings");
 
             // Initialize error handler
             let _error_handler = ErrorHandler::new(app.handle().clone());
@@ -155,7 +171,7 @@ pub fn run() {
             // Set selected microphone if available
             if let Some(ref mic_name) = saved_settings.selected_microphone {
                 if let Err(e) = audio_recorder.select_device(mic_name) {
-                    eprintln!("Failed to select saved microphone '{mic_name}': {e}");
+                    log::error!("Failed to select saved microphone '{mic_name}': {e}");
                 }
             }
 
@@ -173,7 +189,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             app.listen("show_processing_overlay", move |_event| {
                 if let Err(e) = show_processing_overlay(app_handle.clone()) {
-                    eprintln!("Failed to show processing overlay: {e}");
+                    log::error!("Failed to show processing overlay: {e}");
                 }
             });
 
@@ -256,7 +272,7 @@ pub fn run() {
                                 );
                             }
                         } else {
-                            println!("Successfully pasted enhanced text at cursor");
+                            log::debug!("Successfully pasted enhanced text at cursor");
                         }
                     }
                 }

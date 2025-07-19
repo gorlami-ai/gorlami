@@ -21,7 +21,7 @@ impl ClipboardManager {
             .set_text(text)
             .map_err(|e| format!("Failed to copy text to clipboard: {e}"))?;
 
-        println!("Copied text to clipboard: {} chars", text.len());
+        log::debug!("Copied text to clipboard: {} chars", text.len());
         Ok(())
     }
 
@@ -64,7 +64,7 @@ impl ClipboardManager {
             return Err(format!("AppleScript failed: {error}"));
         }
 
-        println!("Simulated paste keypress");
+        log::debug!("Simulated paste keypress");
         Ok(())
     }
 
@@ -72,7 +72,7 @@ impl ClipboardManager {
     fn simulate_paste_keypress(&self) -> Result<(), String> {
         // For non-macOS systems, we'd need different implementation
         // For now, just copy to clipboard
-        println!("Paste keypress simulation not implemented for this platform");
+        log::warn!("Paste keypress simulation not implemented for this platform");
         Ok(())
     }
 }
@@ -86,7 +86,7 @@ pub fn copy_to_clipboard(text: String) -> Result<(), String> {
         .set_text(&text)
         .map_err(|e| format!("Failed to copy text to clipboard: {e}"))?;
 
-    println!("Copied {} characters to clipboard", text.len());
+    log::debug!("Copied {} characters to clipboard", text.len());
     Ok(())
 }
 

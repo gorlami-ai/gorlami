@@ -164,7 +164,7 @@ pub async fn connect_websocket(
                 });
                 
                 if let Err(e) = tx.send(Message::Text(auth_msg.to_string())) {
-                    eprintln!("Failed to send auth message: {e}");
+                    log::error!("Failed to send auth message: {e}");
                 }
             }
             
@@ -218,7 +218,7 @@ pub async fn connect_websocket(
                 let write_task = tokio::spawn(async move {
                     while let Ok(msg) = rx.recv().await {
                         if let Err(e) = write.send(msg).await {
-                            eprintln!("Failed to send WebSocket message: {e}");
+                            log::error!("Failed to send WebSocket message: {e}");
                             break;
                         }
                     }
@@ -227,10 +227,10 @@ pub async fn connect_websocket(
                 // Wait for either task to complete
                 tokio::select! {
                     _ = read_task => {
-                        println!("WebSocket read task completed");
+                        log::debug!("WebSocket read task completed");
                     },
                     _ = write_task => {
-                        println!("WebSocket write task completed");
+                        log::debug!("WebSocket write task completed");
                     },
                 }
             });
@@ -242,13 +242,13 @@ pub async fn connect_websocket(
                 *connection_handle = Some(handle);
             }
             
-            println!("WebSocket connected successfully to: {}", config.url);
+            log::info!("WebSocket connected successfully to: {}", config.url);
             Ok(())
         }
         Ok(Err(e)) => {
             // Connection failed
             let error_msg = format!("Failed to connect to WebSocket: {e}");
-            println!("Connection error: {error_msg}");
+            log::error!("Connection error: {error_msg}");
             
             // Update status to error
             {
@@ -260,7 +260,7 @@ pub async fn connect_websocket(
             
                          // Check if auto-reconnect is enabled
              if config.auto_reconnect {
-                 println!("Auto-reconnect is enabled, scheduling reconnection in {} seconds", config.reconnect_interval);
+                 log::info!("Auto-reconnect is enabled, scheduling reconnection in {} seconds", config.reconnect_interval);
                  
                  // Schedule reconnection by emitting a delayed event
                  let app_clone = app.clone();
@@ -268,7 +268,7 @@ pub async fn connect_websocket(
                  
                  tokio::spawn(async move {
                      tokio::time::sleep(tokio::time::Duration::from_secs(interval)).await;
-                     println!("Attempting to reconnect...");
+                     log::info!("Attempting to reconnect...");
                      
                      // Emit reconnection event
                      let _ = app_clone.emit("websocket_reconnect", ());
@@ -280,7 +280,7 @@ pub async fn connect_websocket(
         Err(_) => {
             // Timeout occurred
             let error_msg = format!("Connection timeout after 10 seconds to: {}", config.url);
-            println!("Connection timeout: {error_msg}");
+            log::error!("Connection timeout: {error_msg}");
             
             // Update status to error
             {
@@ -292,7 +292,7 @@ pub async fn connect_websocket(
             
                          // Check if auto-reconnect is enabled
              if config.auto_reconnect {
-                 println!("Auto-reconnect is enabled, scheduling reconnection in {} seconds", config.reconnect_interval);
+                 log::info!("Auto-reconnect is enabled, scheduling reconnection in {} seconds", config.reconnect_interval);
                  
                  // Schedule reconnection by emitting a delayed event
                  let app_clone = app.clone();
@@ -300,7 +300,7 @@ pub async fn connect_websocket(
                  
                  tokio::spawn(async move {
                      tokio::time::sleep(tokio::time::Duration::from_secs(interval)).await;
-                     println!("Attempting to reconnect...");
+                     log::info!("Attempting to reconnect...");
                      
                      // Emit reconnection event
                      let _ = app_clone.emit("websocket_reconnect", ());
@@ -367,13 +367,13 @@ pub async fn reconnect_websocket(ws_client: &WebSocketClientState) -> Result<(),
             // In a real implementation, we'd keep it open and handle messages
             drop(ws_stream);
             
-            println!("WebSocket reconnected successfully to: {}", config.url);
+            log::info!("WebSocket reconnected successfully to: {}", config.url);
             Ok(())
         }
         Ok(Err(e)) => {
             // Connection failed
             let error_msg = format!("Failed to reconnect to WebSocket: {e}");
-            println!("Reconnection error: {error_msg}");
+            log::error!("Reconnection error: {error_msg}");
             
             // Update status to error
             {
@@ -388,7 +388,7 @@ pub async fn reconnect_websocket(ws_client: &WebSocketClientState) -> Result<(),
         Err(_) => {
             // Timeout occurred
             let error_msg = format!("Reconnection timeout after 10 seconds to: {}", config.url);
-            println!("Reconnection timeout: {error_msg}");
+            log::error!("Reconnection timeout: {error_msg}");
             
             // Update status to error
             {

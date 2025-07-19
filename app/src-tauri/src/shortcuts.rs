@@ -70,13 +70,13 @@ impl<R: Runtime> ShortcutManager<R> {
                         shortcut,
                         move |_app_handle, _shortcut, event| {
                             if event.state == ShortcutState::Pressed {
-                                println!("Transcription shortcut triggered");
+                                log::debug!("Transcription shortcut triggered");
                                 // Emit event to frontend
                                 let _ = app_clone.emit("shortcut_triggered", "transcription");
 
                                 // Show processing overlay
                                 if let Err(e) = app_clone.emit("show_processing_overlay", ()) {
-                                    eprintln!("Failed to show processing overlay: {e}");
+                                    log::error!("Failed to show processing overlay: {e}");
                                 }
 
                                 // Toggle recording
@@ -85,21 +85,21 @@ impl<R: Runtime> ShortcutManager<R> {
                                 {
                                     if recorder.is_recording() {
                                         if let Err(e) = recorder.stop_recording() {
-                                            eprintln!("Failed to stop recording: {e}");
+                                            log::error!("Failed to stop recording: {e}");
                                             let _ = app_clone.emit(
                                                 "recording_error",
                                                 format!("Failed to stop recording: {e}"),
                                             );
                                         }
                                     } else if let Err(e) = recorder.start_recording() {
-                                        eprintln!("Failed to start recording: {e}");
+                                        log::error!("Failed to start recording: {e}");
                                         let _ = app_clone.emit(
                                             "recording_error",
                                             format!("Failed to start recording: {e}"),
                                         );
                                     }
                                 } else {
-                                    eprintln!("Audio recorder not available");
+                                    log::error!("Audio recorder not available");
                                     let _ = app_clone
                                         .emit("recording_error", "Audio recorder not available");
                                 }
@@ -107,12 +107,12 @@ impl<R: Runtime> ShortcutManager<R> {
                         },
                     ) {
                         Ok(_) => {
-                            println!(
+                            log::info!(
                                 "Transcription shortcut '{transcription_shortcut}' registered successfully"
                             );
                         }
                         Err(e) => {
-                            eprintln!(
+                            log::error!(
                                 "Failed to register transcription shortcut '{transcription_shortcut}': {e}"
                             );
                             return Err(tauri::Error::Anyhow(anyhow::anyhow!(
@@ -124,7 +124,7 @@ impl<R: Runtime> ShortcutManager<R> {
                     }
                 }
                 Err(e) => {
-                    eprintln!(
+                    log::error!(
                         "Invalid transcription shortcut format '{transcription_shortcut}': {e}"
                     );
                     return Err(tauri::Error::Anyhow(anyhow::anyhow!(
@@ -135,7 +135,7 @@ impl<R: Runtime> ShortcutManager<R> {
                 }
             }
         } else {
-            println!("Transcription shortcut is disabled, skipping registration");
+            log::info!("Transcription shortcut is disabled, skipping registration");
         }
 
         // Register edit shortcut (only if enabled)
@@ -147,7 +147,7 @@ impl<R: Runtime> ShortcutManager<R> {
                         shortcut,
                         move |_app_handle, _shortcut, event| {
                             if event.state == ShortcutState::Pressed {
-                                println!("Edit shortcut triggered");
+                                log::debug!("Edit shortcut triggered");
                                 // Emit event to frontend
                                 let _ = app_clone.emit("shortcut_triggered", "edit");
 
@@ -159,10 +159,10 @@ impl<R: Runtime> ShortcutManager<R> {
                         },
                     ) {
                         Ok(_) => {
-                            println!("Edit shortcut '{edit_shortcut}' registered successfully");
+                            log::info!("Edit shortcut '{edit_shortcut}' registered successfully");
                         }
                         Err(e) => {
-                            eprintln!(
+                            log::error!(
                                 "Failed to register edit shortcut '{edit_shortcut}': {e}"
                             );
                             return Err(tauri::Error::Anyhow(anyhow::anyhow!(
@@ -174,7 +174,7 @@ impl<R: Runtime> ShortcutManager<R> {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Invalid edit shortcut format '{edit_shortcut}': {e}");
+                    log::error!("Invalid edit shortcut format '{edit_shortcut}': {e}");
                     return Err(tauri::Error::Anyhow(anyhow::anyhow!(
                         "Invalid edit shortcut format '{}': {}",
                         edit_shortcut,
@@ -183,14 +183,14 @@ impl<R: Runtime> ShortcutManager<R> {
                 }
             }
         } else {
-            println!("Edit shortcut is disabled, skipping registration");
+            log::info!("Edit shortcut is disabled, skipping registration");
         }
 
         Ok(())
     }
 
     pub fn update_shortcuts(&self, new_config: ShortcutConfig) -> tauri::Result<()> {
-        println!(
+        log::info!(
             "Updating shortcuts from {:?} to {new_config:?}",
             self.get_config()
         );
@@ -198,10 +198,10 @@ impl<R: Runtime> ShortcutManager<R> {
         // Unregister all shortcuts
         match self.app.global_shortcut().unregister_all() {
             Ok(_) => {
-                println!("Successfully unregistered all shortcuts");
+                log::debug!("Successfully unregistered all shortcuts");
             }
             Err(e) => {
-                eprintln!("Failed to unregister shortcuts: {e}");
+                log::error!("Failed to unregister shortcuts: {e}");
                 return Err(tauri::Error::Anyhow(anyhow::anyhow!(
                     "Failed to unregister shortcuts: {}",
                     e
@@ -218,13 +218,13 @@ impl<R: Runtime> ShortcutManager<R> {
         // Re-register with new config
         match self.register_shortcuts(&new_config) {
             Ok(_) => {
-                println!("Shortcuts updated successfully: {new_config:?}");
+                log::info!("Shortcuts updated successfully: {new_config:?}");
                 // Emit success event
                 let _ = self.app.emit("shortcuts_updated", &new_config);
                 Ok(())
             }
             Err(e) => {
-                eprintln!("Failed to register new shortcuts: {e}");
+                log::error!("Failed to register new shortcuts: {e}");
                 // Emit error event
                 let _ = self.app.emit(
                     "shortcuts_error",
@@ -240,14 +240,14 @@ impl<R: Runtime> ShortcutManager<R> {
     }
 
     pub fn disable_shortcuts(&self) -> tauri::Result<()> {
-        println!("Disabling shortcuts temporarily");
+        log::info!("Disabling shortcuts temporarily");
         *self.enabled.lock().unwrap() = false;
         self.app.global_shortcut().unregister_all()
             .map_err(|e| tauri::Error::Anyhow(anyhow::anyhow!("Failed to disable shortcuts: {}", e)))
     }
 
     pub fn enable_shortcuts(&self) -> tauri::Result<()> {
-        println!("Enabling shortcuts");
+        log::info!("Enabling shortcuts");
         *self.enabled.lock().unwrap() = true;
         let config = self.get_config();
         self.register_shortcuts(&config)
