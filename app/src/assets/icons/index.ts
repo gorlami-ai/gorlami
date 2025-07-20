@@ -1,5 +1,4 @@
 export { HomeIcon } from './HomeIcon';
-export { DictionaryIcon } from './DictionaryIcon';
 export { ActivityIcon } from './ActivityIcon';
 export { SettingsIcon } from './SettingsIcon';
 export { SignOutIcon } from './SignOutIcon';

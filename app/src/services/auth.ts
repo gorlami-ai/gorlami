@@ -208,11 +208,21 @@ export const authService = {
     return authEnabled !== 'false';
   },
 
+  /**
+   * Returns a mock user for development when auth is disabled.
+   * This allows testing the app without setting up Supabase authentication.
+   * 
+   * Enable/disable auth with VITE_AUTH_ENABLED=false in .env
+   */
   getMockUser(): AuthUser {
     return {
-      id: 'test-user-id',
-      email: 'test@example.com',
-      user_metadata: { name: 'Test User' },
+      id: 'dev-user-' + Math.random().toString(36).substr(2, 9),
+      email: 'developer@gorlami.local',
+      user_metadata: { 
+        name: 'Local Developer',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=developer',
+        created_at: new Date().toISOString(),
+      },
     };
   },
 };

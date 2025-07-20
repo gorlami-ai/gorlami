@@ -1,104 +1,59 @@
-import { listen } from '@tauri-apps/api/event';
-import { useEffect, useState } from 'react';
-
-type ProcessingState =
-  | 'idle'
-  | 'recording'
-  | 'transcribing'
-  | 'enhancing'
-  | 'pasting'
-  | 'complete'
-  | 'error';
+import { useCallback, useState } from 'react';
+import { useProcessingEvents, useAutoHide, ProcessingState } from '../hooks/useProcessingEvents';
 export function ProcessingOverlay() {
   const [processingState, setProcessingState] = useState<ProcessingState>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [isVisible, setIsVisible] = useState(false);
-  const [autoHideTimeout, setAutoHideTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-hide overlay after delay
-  const scheduleAutoHide = (delay: number = 3000) => {
-    if (autoHideTimeout) {
-      clearTimeout(autoHideTimeout);
-    }
-    const timeout = setTimeout(() => {
-      setIsVisible(false);
-      setProcessingState('idle');
-    }, delay);
-    setAutoHideTimeout(timeout);
-  };
+  const { scheduleHide, cancelHide } = useAutoHide();
 
-  const showOverlay = () => {
+  const hideOverlay = useCallback(() => {
+    setIsVisible(false);
+    setProcessingState('idle');
+  }, []);
+
+  const showOverlay = useCallback(() => {
     setIsVisible(true);
-    if (autoHideTimeout) {
-      clearTimeout(autoHideTimeout);
-      setAutoHideTimeout(null);
-    }
-  };
+    cancelHide();
+  }, [cancelHide]);
 
-  useEffect(() => {
-    // Listen for recording events
-    const unlistenStart = listen('recording_started', () => {
+  const eventHandlers = {
+    onRecordingStarted: () => {
       setProcessingState('recording');
       setErrorMessage('');
       showOverlay();
-    });
-
-    const unlistenStop = listen('recording_stopped', () => {
+    },
+    onRecordingStopped: () => {
       setProcessingState('transcribing');
-    });
-
-    // Listen for audio chunks (for audio level visualization)
-    const unlistenAudioChunk = listen('audio_chunk', (event: any) => {
-      if (event.payload) {
-        // Calculate audio level from chunk data (simplified)
-        const audioData = event.payload as number[];
-        const level = Math.min(audioData.length / 1000, 1); // Simplified audio level
-        setAudioLevel(level);
-      }
-    });
-
-    // Listen for transcription responses
-    const unlistenTranscription = listen('transcription_response', (event: any) => {
-      if (event.payload?.is_final) {
+    },
+    onAudioChunk: (audioData: number[]) => {
+      // Calculate audio level from chunk data (simplified)
+      const level = Math.min(audioData.length / 1000, 1);
+      setAudioLevel(level);
+    },
+    onTranscriptionResponse: (response: { is_final: boolean; text?: string }) => {
+      if (response.is_final) {
         setProcessingState('enhancing');
       }
-    });
-
-    // Listen for text pasting
-    const unlistenTextPasted = listen('text_pasted', () => {
+    },
+    onTextPasted: () => {
       setProcessingState('complete');
-      scheduleAutoHide(1500); // Hide after 1.5 seconds
-    });
-
-
-    // Listen for errors
-    const unlistenRecordingError = listen('recording_error', (event: any) => {
+      scheduleHide(hideOverlay, 1500);
+    },
+    onRecordingError: (error: string) => {
       setProcessingState('error');
-      setErrorMessage(event.payload || 'Recording error');
-      scheduleAutoHide(4000); // Hide after 4 seconds for errors
-    });
-
-    const unlistenAudioError = listen('audio_error', (event: any) => {
+      setErrorMessage(error);
+      scheduleHide(hideOverlay, 4000);
+    },
+    onAudioError: (error: string) => {
       setProcessingState('error');
-      setErrorMessage(event.payload || 'Audio error');
-      scheduleAutoHide(4000);
-    });
+      setErrorMessage(error);
+      scheduleHide(hideOverlay, 4000);
+    },
+  };
 
-    return () => {
-      unlistenStart.then((fn) => fn());
-      unlistenStop.then((fn) => fn());
-      unlistenAudioChunk.then((fn) => fn());
-      unlistenTranscription.then((fn) => fn());
-      unlistenTextPasted.then((fn) => fn());
-      unlistenRecordingError.then((fn) => fn());
-      unlistenAudioError.then((fn) => fn());
-
-      if (autoHideTimeout) {
-        clearTimeout(autoHideTimeout);
-      }
-    };
-  }, [autoHideTimeout]);
+  useProcessingEvents(eventHandlers);
 
 
   const getStateDisplay = () => {

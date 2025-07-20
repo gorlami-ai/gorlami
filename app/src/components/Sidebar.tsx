@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
 import { 
   HomeIcon, 
-  DictionaryIcon, 
   ActivityIcon, 
   SettingsIcon,
   GorlamiLogoIcon 
@@ -14,11 +13,6 @@ export function Sidebar() {
       path: '/',
       label: 'Home',
       icon: <HomeIcon />,
-    },
-    {
-      path: '/dictionary',
-      label: 'Dictionary',
-      icon: <DictionaryIcon />,
     },
     {
       path: '/activity',

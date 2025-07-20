@@ -7,7 +7,6 @@ import { UpdateBanner } from './components/UpdateBanner';
 import { useAutoUpdater } from './hooks/useAutoUpdater';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
-import { Dictionary } from './pages/Dictionary';
 import { Activity } from './pages/Activity';
 import { Login } from './pages/Login';
 import { AuthCallback } from './pages/AuthCallback';
@@ -57,7 +56,6 @@ function App() {
             >
               <Route index element={<Dashboard />} />
               <Route path="settings" element={<Settings />} />
-              <Route path="dictionary" element={<Dictionary />} />
               <Route path="activity" element={<Activity />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
