@@ -2,7 +2,6 @@ import { Router } from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
-import { uploadLimiter } from '../middleware/rate-limit.js';
 import { processRequestSchema, transcribeRequestSchema } from '../utils/validation.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import * as activitiesController from '../controllers/activities.js';
@@ -11,38 +10,19 @@ import * as healthController from '../controllers/health.js';
 
 const router = Router();
 
-// Configure multer for audio file uploads
+// Configure multer for file uploads
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (_req, file, cb) => {
-    // Accept only audio files
-    const allowedMimeTypes = [
-      'audio/wav',
-      'audio/wave',
-      'audio/mp3',
-      'audio/mpeg',
-      'audio/mp4',
-      'audio/webm',
-      'audio/ogg',
-      'audio/flac'
-    ];
-    
-    if (allowedMimeTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only audio files are allowed.'));
-    }
   }
 });
 
 // Health check
 router.get('/', healthController.healthCheck);
 
-// Protected routes
-router.use('/api', authenticate);
+// Protected routes - wrap authenticate to handle type mismatch
+router.use('/api', (req, res, next) => authenticate(req as any, res, next));
 
 // Activities routes
 router.post(
@@ -53,7 +33,6 @@ router.post(
 
 router.post(
   '/api/transcribe',
-  uploadLimiter,
   upload.single('audio_file'),
   validate(transcribeRequestSchema),
   asyncHandler(activitiesController.transcribeAudio)

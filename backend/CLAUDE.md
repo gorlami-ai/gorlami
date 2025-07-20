@@ -54,13 +54,11 @@ src/
 └── index.ts        # Server entry point
 ```
 
-## Security Features
-- **Helmet.js** for security headers
-- **Rate limiting** on all API endpoints
-- **File type validation** for audio uploads
+## API Features
 - **JWT authentication** via Supabase
 - **Request logging** with Morgan
 - **CORS configuration** for Tauri app
+- **File uploads** with 10MB limit
 
 ## Coding Standards
 - Use ES modules with `.js` extensions in imports
