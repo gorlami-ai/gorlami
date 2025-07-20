@@ -2,43 +2,67 @@ import { Router } from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
+import { uploadLimiter } from '../middleware/rate-limit.js';
 import { processRequestSchema, transcribeRequestSchema } from '../utils/validation.js';
+import { asyncHandler } from '../utils/async-handler.js';
 import * as activitiesController from '../controllers/activities.js';
 import * as filesController from '../controllers/files.js';
 import * as healthController from '../controllers/health.js';
 
 const router = Router();
+
+// Configure multer for audio file uploads
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
+  fileFilter: (_req, file, cb) => {
+    // Accept only audio files
+    const allowedMimeTypes = [
+      'audio/wav',
+      'audio/wave',
+      'audio/mp3',
+      'audio/mpeg',
+      'audio/mp4',
+      'audio/webm',
+      'audio/ogg',
+      'audio/flac'
+    ];
+    
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only audio files are allowed.'));
+    }
+  }
 });
 
 // Health check
 router.get('/', healthController.healthCheck);
 
 // Protected routes
-router.use('/api', authenticate as any);
+router.use('/api', authenticate);
 
 // Activities routes
 router.post(
   '/api/process',
   validate(processRequestSchema),
-  activitiesController.processText as any
+  asyncHandler(activitiesController.processText)
 );
 
 router.post(
   '/api/transcribe',
+  uploadLimiter,
   upload.single('audio_file'),
   validate(transcribeRequestSchema),
-  activitiesController.transcribeAudio as any
+  asyncHandler(activitiesController.transcribeAudio)
 );
 
-router.get('/api/activities', activitiesController.listActivities as any);
-router.get('/api/activities/:activityId', activitiesController.getActivity as any);
+router.get('/api/activities', asyncHandler(activitiesController.listActivities));
+router.get('/api/activities/:activityId', asyncHandler(activitiesController.getActivity));
 
 // Files routes
-router.get('/api/files/:fileId', filesController.downloadFile as any);
+router.get('/api/files/:fileId', asyncHandler(filesController.downloadFile));
 
 export default router;

@@ -4,8 +4,7 @@ import { env } from '../config/env.js';
 export class AppError extends Error {
   constructor(
     public message: string,
-    public statusCode: number = 500,
-    public isOperational: boolean = true
+    public statusCode: number = 500
   ) {
     super(message);
     Error.captureStackTrace(this, this.constructor);

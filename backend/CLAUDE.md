@@ -6,65 +6,67 @@ This file provides guidance to Claude Code when working with the Express TypeScr
 The backend is an Express.js server written in TypeScript that handles voice and text processing for the Gorlami app, integrating Deepgram for speech-to-text and Azure OpenAI for AI processing.
 
 ## Tech Stack
-- Node.js 22 LTS
-- Express.js with TypeScript
-- Prisma ORM for PostgreSQL
-- Supabase for auth and storage
-- Deepgram SDK for speech-to-text
-- Azure OpenAI for LLM processing
+- **Runtime**: Node.js 22 LTS
+- **Framework**: Express.js with TypeScript
+- **Database**: PostgreSQL via Prisma ORM
+- **Authentication**: Supabase Auth (JWT validation)
+- **File Storage**: Supabase Storage
+- **AI Services**: 
+  - Deepgram SDK for speech-to-text
+  - Azure OpenAI for text processing
 
 ## Development Commands
 ```bash
 # Install dependencies
 npm install
 
+# Generate Prisma client
+npm run prisma:generate
+
 # Run development server
 npm run dev
 
-# Build TypeScript
+# Build for production
 npm run build
 
-# Run production server
-npm start
-
-# Type checking - Always run this!
+# Type checking - ALWAYS run before committing
 npm run typecheck
 
-# Linting - Always run this!
+# Linting - ALWAYS run before committing
 npm run lint
 npm run lint:fix
 
-# Database
-npm run prisma:generate
-npm run prisma:migrate
-npm run prisma:studio
+# Database commands
+npm run prisma:migrate   # Run migrations
+npm run prisma:studio    # Open Prisma Studio
 ```
 
 ## Project Structure
 ```
 src/
-├── config/       # Environment configuration
-├── controllers/  # Request handlers
-├── middleware/   # Express middleware
-├── routes/      # API route definitions
-├── services/    # External service integrations
-├── types/       # TypeScript type definitions
-├── utils/       # Helper utilities
-├── app.ts       # Express app setup
-└── index.ts     # Server entry point
+├── controllers/     # Request handlers
+├── middleware/      # Express middleware (auth, error, rate-limit)
+├── routes/         # API route definitions
+├── services/       # External service integrations
+├── types/          # TypeScript type definitions
+├── utils/          # Helper utilities
+├── app.ts          # Express app configuration
+└── index.ts        # Server entry point
 ```
 
+## Security Features
+- **Helmet.js** for security headers
+- **Rate limiting** on all API endpoints
+- **File type validation** for audio uploads
+- **JWT authentication** via Supabase
+- **Request logging** with Morgan
+- **CORS configuration** for Tauri app
+
 ## Coding Standards
-- Use ES modules with .js extensions in imports
+- Use ES modules with `.js` extensions in imports
 - Use async/await for all asynchronous operations
 - Implement proper error handling with AppError class
 - Use Zod for request validation
 - Follow TypeScript strict mode rules
 - Keep controllers thin, business logic in services
 - Always run typecheck and lint before completing tasks
-
-## Azure Deployment
-- Configured for Azure Web Apps with Node 22
-- Uses process.env.PORT for Azure compatibility
-- Environment variables managed through Azure Portal
-- Supports Application Insights for monitoring

@@ -6,31 +6,29 @@ async function startServer() {
   try {
     // Test database connection
     await prisma.$connect();
-    console.log('Database connected successfully');
 
     const app = createApp();
     const port = env.PORT;
 
-    app.listen(port, env.SERVER_HOST, () => {
-      console.log(`Server running on http://${env.SERVER_HOST}:${port}`);
-      console.log(`Environment: ${env.NODE_ENV}`);
-      if (env.NODE_ENV === 'development') {
-        console.log(`API Documentation: http://localhost:${port}/docs`);
-      }
+    const server = app.listen(port, env.SERVER_HOST, () => {
+      const address = server.address();
+      const bind = typeof address === 'string' ? address : `port ${address?.port}`;
+      console.log(`🚀 Server listening on ${bind} in ${env.NODE_ENV} mode`);
     });
 
     // Graceful shutdown
-    process.on('SIGTERM', async () => {
-      console.log('SIGTERM received. Shutting down gracefully...');
+    const shutdown = async (signal: string) => {
+      console.log(`\n${signal} received. Shutting down gracefully...`);
+      server.close(() => {
+        console.log('HTTP server closed.');
+      });
+      
       await prisma.$disconnect();
       process.exit(0);
-    });
+    };
 
-    process.on('SIGINT', async () => {
-      console.log('SIGINT received. Shutting down gracefully...');
-      await prisma.$disconnect();
-      process.exit(0);
-    });
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (error) {
     console.error('Failed to start server:', error);
     await prisma.$disconnect();

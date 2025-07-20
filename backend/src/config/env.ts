@@ -23,9 +23,6 @@ const envSchema = z.object({
   DATABASE_URL: z.string(),
   DIRECT_URL: z.string().optional(),
 
-  // Logging
-  LOG_LEVEL: z.string().default('INFO'),
-
   // Optional configurations with defaults
   CORS_ORIGINS: z.string().default('tauri://localhost').transform((val) => val.split(',')),
   OPENAI_API_VERSION: z.string().default('2025-01-01-preview'),

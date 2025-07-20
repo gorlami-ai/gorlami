@@ -25,8 +25,7 @@ export class DeepgramService {
       }
     );
 
-    const result = response.result as any;
-    const transcript = result.results?.channels[0]?.alternatives[0]?.transcript || '';
+    const transcript = response.result?.results?.channels[0]?.alternatives[0]?.transcript || '';
     
     return transcript;
   }
