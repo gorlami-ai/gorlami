@@ -19,6 +19,16 @@ supabase = "^2.16.0"
 [tool.poetry.scripts]
 start = "main:start_server"
 
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.12.4"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
