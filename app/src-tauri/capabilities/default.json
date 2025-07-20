@@ -13,6 +13,7 @@
     "global-shortcut:allow-unregister-all",
     "updater:default",
     "process:default",
-    "dialog:default"
+    "dialog:default",
+    "deep-link:default"
   ]
 }

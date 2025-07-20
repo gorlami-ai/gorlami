@@ -6,11 +6,9 @@ mod simple_audio;
 mod tray;
 mod updater;
 mod websocket;
-mod oauth;
 
 use clipboard::{copy_to_clipboard, get_clipboard_text, paste_at_cursor};
 use error_handler::{clear_error_logs, get_error_logs, report_error, ErrorHandler};
-use oauth::start_oauth_server;
 use settings::{get_app_settings, reset_app_settings, save_app_settings};
 use shortcuts::{
     disable_shortcuts, enable_shortcuts, get_shortcut_config, update_shortcut_config,
@@ -97,8 +95,8 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_oauth::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             get_shortcut_config,
@@ -132,8 +130,7 @@ pub fn run() {
             check_for_updates,
             download_and_install_update,
             get_update_info,
-            check_and_prompt_for_update,
-            start_oauth_server
+            check_and_prompt_for_update
         ])
         .setup(|app| {
             // Hide dock icon on macOS

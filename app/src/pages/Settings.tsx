@@ -1,11 +1,9 @@
 import { getVersion } from '@tauri-apps/api/app';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShortcutField } from '../components/ShortcutField';
-import { getWebSocketUrl } from '../config/env';
 import { useAutoUpdater } from '../hooks/useAutoUpdater';
-import { websocketService } from '../services/websocket';
 import { createLogger } from '../utils/logger';
 
 interface ShortcutConfig {
@@ -20,12 +18,6 @@ interface AudioDevice {
   is_default: boolean;
 }
 
-interface WebSocketConfig {
-  url: string;
-  auto_reconnect: boolean;
-  reconnect_interval: number;
-}
-
 const logger = createLogger('Settings');
 
 export function Settings() {
@@ -38,14 +30,7 @@ export function Settings() {
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [websocketConfig, setWebsocketConfig] = useState<WebSocketConfig>({
-    url: getWebSocketUrl(),
-    auto_reconnect: true,
-    reconnect_interval: 5,
-  });
-  const [websocketStatus, setWebsocketStatus] = useState<string>('Disconnected');
   const [currentVersion, setCurrentVersion] = useState<string>('');
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { isChecking, lastCheck, checkForUpdates } = useAutoUpdater();
 
@@ -55,16 +40,6 @@ export function Settings() {
     // Load app version
     getVersion().then(setCurrentVersion);
 
-    // Listen for WebSocket status changes
-    const unlistenWebSocketStatus = listen('websocket_status', (event: any) => {
-      if (typeof event.payload === 'string') {
-        setWebsocketStatus(event.payload);
-      } else if (event.payload.Error) {
-        setWebsocketStatus(`Error: ${event.payload.Error}`);
-      } else {
-        setWebsocketStatus('Connected');
-      }
-    });
 
     // Listen for shortcut feedback
     const unlistenShortcutUpdated = listen('shortcuts_updated', (event: any) => {
@@ -76,7 +51,6 @@ export function Settings() {
     });
 
     return () => {
-      unlistenWebSocketStatus.then((fn) => fn());
       unlistenShortcutUpdated.then((fn) => fn());
       unlistenShortcutError.then((fn) => fn());
     };
@@ -104,18 +78,6 @@ export function Settings() {
         }
       }
 
-      // Apply WebSocket configuration
-      setWebsocketConfig(appSettings.websocket);
-
-      // Get WebSocket status
-      const wsStatus = await invoke<any>('get_websocket_status');
-      if (typeof wsStatus === 'string') {
-        setWebsocketStatus(wsStatus);
-      } else if (wsStatus.Error) {
-        setWebsocketStatus(`Error: ${wsStatus.Error}`);
-      } else {
-        setWebsocketStatus('Connected');
-      }
     } catch (error) {
       logger.error('Failed to load settings:', error);
     } finally {
@@ -195,47 +157,6 @@ export function Settings() {
     }
   };
 
-  const handleWebSocketConfigChange = (
-    key: keyof WebSocketConfig,
-    value: string | boolean | number
-  ) => {
-    setWebsocketConfig((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const saveWebSocketConfig = async () => {
-    try {
-      await invoke('update_websocket_config', { config: websocketConfig });
-
-      // Save to persistent settings
-      const currentSettings = await invoke<any>('get_app_settings');
-      await invoke('save_app_settings', {
-        settings: {
-          ...currentSettings,
-          websocket: websocketConfig,
-        },
-      });
-
-      logger.info('WebSocket configuration saved');
-    } catch (error) {
-      logger.error('Failed to save WebSocket configuration:', error);
-    }
-  };
-
-  const connectWebSocket = async () => {
-    try {
-      await websocketService.connectWithAuth();
-    } catch (error) {
-      logger.error('Failed to connect WebSocket:', error);
-    }
-  };
-
-  const disconnectWebSocket = async () => {
-    try {
-      await websocketService.disconnect();
-    } catch (error) {
-      logger.error('Failed to disconnect WebSocket:', error);
-    }
-  };
 
   if (loading) {
     return (
@@ -326,55 +247,6 @@ export function Settings() {
           </div>
         </section>
 
-        {/* Backend Section */}
-        <section className="mb-6">
-          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
-            Backend
-          </h2>
-
-          <div className="space-y-0">
-            <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-              <label className="text-gray-900 text-sm font-medium">Server URL</label>
-              <input
-                type="text"
-                value={websocketConfig.url}
-                onChange={(e) => {
-                  handleWebSocketConfigChange('url', e.target.value);
-                  // Auto-save after a delay with debouncing
-                  if (saveTimeoutRef.current) {
-                    clearTimeout(saveTimeoutRef.current);
-                  }
-                  saveTimeoutRef.current = setTimeout(() => {
-                    saveWebSocketConfig();
-                  }, 1000);
-                }}
-                placeholder={getWebSocketUrl()}
-                className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 min-w-[250px]"
-              />
-            </div>
-
-            <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
-              <label className="text-gray-900 text-sm font-medium">Connection</label>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    websocketStatus === 'Connected'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {websocketStatus}
-                </span>
-                <button
-                  onClick={websocketStatus === 'Connected' ? disconnectWebSocket : connectWebSocket}
-                  className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-100 transition-colors"
-                >
-                  {websocketStatus === 'Connected' ? 'Disconnect' : 'Connect'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Updates Section */}
         <section className="mb-6">

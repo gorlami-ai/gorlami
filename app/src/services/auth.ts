@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { listen } from '@tauri-apps/api/event';
+import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -13,7 +12,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true, // Enable to handle tokens in URL
+    flowType: 'pkce', // Explicitly use PKCE flow
     storage: {
       getItem: (key: string) => {
         return localStorage.getItem(key);
@@ -35,44 +35,103 @@ export interface AuthUser {
 }
 
 export const authService = {
-  async signInWithOAuth(provider: 'google' | 'github') {
+  async signInWithOAuth(provider: 'github') {
     try {
-      const port = await invoke<number>('start_oauth_server');
+      const isDev = import.meta.env.DEV;
+      const redirectTo = isDev 
+        ? `http://localhost:1420/auth/callback`
+        : `gorlami://auth/callback`;
       
+      if (isDev) {
+        // In development, let Supabase handle the redirect automatically
+        // This avoids the context mismatch issue with PKCE
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo,
+            skipBrowserRedirect: false, // Let Supabase handle the redirect
+          },
+        });
+        
+        if (error) throw error;
+        // Browser will handle the redirect and callback
+        return;
+      }
+      
+      // Production: Use PKCE with deep links and manual handling
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `http://localhost:${port}/callback`,
-          skipBrowserRedirect: true,
+          redirectTo,
+          skipBrowserRedirect: true, // Manual handling for deep links
         },
       });
 
       if (error) throw error;
       if (!data.url) throw new Error('No OAuth URL returned');
 
-      await openUrl(data.url);
-
+      // Set up deep link handler for production
       return new Promise<void>(async (resolve, reject) => {
-        const unlisten = await listen<string>('oauth://callback', async (event) => {
+        let handled = false;
+        
+        // Set up a timeout in case the callback never arrives
+        const timeout = setTimeout(() => {
+          if (!handled) {
+            handled = true;
+            unsubscribe?.();
+            reject(new Error('OAuth callback timeout'));
+          }
+        }, 60000); // 1 minute timeout
+
+        // Listen for deep link callback
+        const unsubscribe = await onOpenUrl((urls) => {
+          if (handled) return;
+          
+          // Find the auth callback URL
+          const callbackUrl = urls.find(url => 
+            url.includes('/auth/callback') || url.includes('//auth/callback')
+          );
+          
+          if (!callbackUrl) return;
+          
+          handled = true;
+          clearTimeout(timeout);
+          
           try {
-            const url = new URL(event.payload);
-            const code = url.searchParams.get('code');
+            console.log('OAuth callback received:', callbackUrl);
             
+            // Parse the URL for PKCE flow (authorization code)
+            const url = new URL(callbackUrl);
+            const code = url.searchParams.get('code');
+            const error = url.searchParams.get('error');
+            const errorDescription = url.searchParams.get('error_description');
+
+            if (error) {
+              throw new Error(errorDescription || `OAuth error: ${error}`);
+            }
+
             if (!code) {
               throw new Error('No authorization code received');
             }
 
-            const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
-            
-            if (sessionError) throw sessionError;
-
-            unlisten();
-            resolve();
+            // PKCE flow - exchange authorization code for session
+            supabase.auth.exchangeCodeForSession(code).then(({ error: sessionError }) => {
+              unsubscribe();
+              if (sessionError) {
+                reject(sessionError);
+              } else {
+                resolve();
+              }
+            });
           } catch (err) {
-            unlisten();
+            console.error('OAuth callback error:', err);
+            unsubscribe();
             reject(err);
           }
         });
+
+        // Open the OAuth URL in the browser
+        await openUrl(data.url);
       });
     } catch (error) {
       console.error('OAuth sign in error:', error);
@@ -106,14 +165,18 @@ export const authService = {
   },
 
   async getSession() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     return session;
   },
 
   async getUser(): Promise<AuthUser | null> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return null;
-    
+
     return {
       id: user.id,
       email: user.email,

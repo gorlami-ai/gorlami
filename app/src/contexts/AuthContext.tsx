@@ -4,7 +4,7 @@ import { authService, AuthUser } from '../services/auth';
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  signInWithOAuth: (provider: 'google' | 'github') => Promise<void>;
+  signInWithOAuth: (provider: 'github') => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signInWithOAuth = async (provider: 'google' | 'github') => {
+  const signInWithOAuth = async (provider: 'github') => {
     if (!authService.isAuthEnabled()) {
       setUser(authService.getMockUser());
       return;

@@ -39,6 +39,11 @@
       "endpoints": [
         "https://releases.gorlami.com/{{target}}/{{arch}}/{{current_version}}"
       ]
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["gorlami"]
+      }
     }
   }
 }

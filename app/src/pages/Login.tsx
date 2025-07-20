@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { GitHubIcon, GoogleIcon, GorlamiLogoIcon } from '../assets/icons';
+import { GitHubIcon, GorlamiLogoIcon } from '../assets/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 export function Login() {
@@ -21,7 +21,14 @@ export function Login() {
     }
   }, [isAuthenticated, navigate, from]);
 
-  const handleOAuthSignIn = async (provider: 'google' | 'github') => {
+  useEffect(() => {
+    // Check for errors passed from auth callback
+    if (location.state?.error) {
+      setError(location.state.error);
+    }
+  }, [location.state]);
+
+  const handleOAuthSignIn = async (provider: 'github') => {
     setLoading(true);
     setError(null);
     try {
@@ -61,7 +68,6 @@ export function Login() {
             <GorlamiLogoIcon className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Welcome to Gorlami</h1>
-          <p className="mt-2 text-gray-600">Sign in to get started</p>
         </div>
 
         <div className="bg-white shadow-xl rounded-2xl p-8">
@@ -72,7 +78,7 @@ export function Login() {
           )}
 
           {/* Email Sign In Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
+          <form onSubmit={handleEmailAuth} className="space-y-3 mb-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email
@@ -84,7 +90,7 @@ export function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors text-gray-900"
                 disabled={loading}
               />
             </div>
@@ -100,7 +106,7 @@ export function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors text-gray-900"
                 disabled={loading}
               />
             </div>
@@ -108,7 +114,7 @@ export function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
             </button>
@@ -134,27 +140,15 @@ export function Login() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <button
-              onClick={() => handleOAuthSignIn('google')}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <GoogleIcon className="w-5 h-5" />
-              <span className="text-gray-700 font-medium">
-                {loading ? 'Signing in...' : 'Continue with Google'}
-              </span>
-            </button>
-
+          <div className="flex items-center justify-center">
             <button
               onClick={() => handleOAuthSignIn('github')}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Continue with GitHub"
             >
               <GitHubIcon className="w-5 h-5" />
-              <span className="text-gray-700 font-medium">
-                {loading ? 'Signing in...' : 'Continue with GitHub'}
-              </span>
+              <span>Continue with GitHub</span>
             </button>
           </div>
 

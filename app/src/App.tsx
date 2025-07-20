@@ -10,6 +10,7 @@ import { Settings } from './pages/Settings';
 import { Dictionary } from './pages/Dictionary';
 import { Activity } from './pages/Activity';
 import { Login } from './pages/Login';
+import { AuthCallback } from './pages/AuthCallback';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { authService } from './services/auth';
 
@@ -41,6 +42,7 @@ function App() {
         <div className="w-screen h-screen overflow-hidden bg-slate-950 text-slate-50">
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route 
               path="/" 
               element={
