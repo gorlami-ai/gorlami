@@ -14,10 +14,6 @@
     "macOSPrivateApi": true,
     "security": {
       "csp": null
-    },
-    "trayIcon": {
-      "iconPath": "icons/tray-icon.png",
-      "iconAsTemplate": true
     }
   },
   "bundle": {

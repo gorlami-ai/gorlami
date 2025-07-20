@@ -9,11 +9,8 @@ type ProcessingState =
   | 'pasting'
   | 'complete'
   | 'error';
-type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
-
 export function ProcessingOverlay() {
   const [processingState, setProcessingState] = useState<ProcessingState>('idle');
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -74,16 +71,6 @@ export function ProcessingOverlay() {
       scheduleAutoHide(1500); // Hide after 1.5 seconds
     });
 
-    // Listen for WebSocket status changes
-    const unlistenWebSocketStatus = listen('websocket_status', (event: any) => {
-      if (event.payload === 'Connected') {
-        setConnectionStatus('connected');
-      } else if (event.payload === 'Connecting') {
-        setConnectionStatus('connecting');
-      } else {
-        setConnectionStatus('disconnected');
-      }
-    });
 
     // Listen for errors
     const unlistenRecordingError = listen('recording_error', (event: any) => {
@@ -104,7 +91,6 @@ export function ProcessingOverlay() {
       unlistenAudioChunk.then((fn) => fn());
       unlistenTranscription.then((fn) => fn());
       unlistenTextPasted.then((fn) => fn());
-      unlistenWebSocketStatus.then((fn) => fn());
       unlistenRecordingError.then((fn) => fn());
       unlistenAudioError.then((fn) => fn());
 
@@ -174,13 +160,6 @@ export function ProcessingOverlay() {
       isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'
     }`}>
       <div className="bg-slate-900/80 backdrop-blur-md rounded-2xl px-5 py-3 flex items-center gap-3 min-w-[200px] max-w-[300px] shadow-2xl border border-white/10 animate-slide-in pointer-events-auto transition-all duration-300 ease-in-out">
-        <div className="absolute top-2 right-2">
-          <div className={`w-2 h-2 rounded-full transition-colors duration-200 ${
-            connectionStatus === 'connected' ? 'bg-emerald-500' :
-            connectionStatus === 'connecting' ? 'bg-amber-500 animate-pulse' :
-            'bg-rose-500'
-          }`}></div>
-        </div>
 
         <div className={stateDisplay.className}>
           {stateDisplay.icon}

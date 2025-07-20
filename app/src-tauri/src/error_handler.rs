@@ -5,7 +5,6 @@ use tauri::{AppHandle, Emitter};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ErrorType {
     Audio,
-    WebSocket,
     Settings,
     Clipboard,
     Shortcuts,
@@ -33,6 +32,7 @@ impl fmt::Display for AppError {
 }
 
 impl AppError {
+    #[allow(dead_code)]
     pub fn new(error_type: ErrorType, title: &str, message: &str) -> Self {
         Self {
             error_type,
@@ -47,6 +47,7 @@ impl AppError {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_details(mut self, details: &str) -> Self {
         self.details = Some(details.to_string());
         self
@@ -81,16 +82,8 @@ impl ErrorHandler {
         }
     }
 
-    pub fn handle_websocket_error(&self, message: &str, details: Option<&str>) {
-        let mut error = AppError::new(ErrorType::WebSocket, "Connection Error", message);
 
-        if let Some(details) = details {
-            error = error.with_details(details);
-        }
-
-        self.handle_error(error);
-    }
-
+    #[allow(dead_code)]
     pub fn handle_clipboard_error(&self, message: &str, details: Option<&str>) {
         let mut error = AppError::new(ErrorType::Clipboard, "Clipboard Error", message);
 

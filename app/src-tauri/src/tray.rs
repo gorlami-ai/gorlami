@@ -47,18 +47,11 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
         .collect();
     let microphone_menu = Submenu::with_items(app, "Microphone", true, &mic_refs)?;
 
-    // Status item with actual username
-    let username = whoami::username();
-    let status_text = format!("Hello, {username} • Offline");
-    let status_item = MenuItem::with_id(app, "status", &status_text, false, None::<&str>)?;
-
     let separator = PredefinedMenuItem::separator(app)?;
 
     let menu = Menu::with_items(
         app,
         &[
-            &status_item,
-            &separator,
             &dashboard_item,
             &microphone_menu,
             &settings_item,
@@ -68,7 +61,7 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     )?;
 
     let _tray = TrayIconBuilder::with_id("main")
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?)
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id.as_ref() {
@@ -158,16 +151,3 @@ fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>, tab: Option<&str>) {
     }
 }
 
-pub fn update_tray_status<R: Runtime>(
-    _app: &tauri::AppHandle<R>,
-    username: &str,
-    is_online: bool,
-) -> tauri::Result<()> {
-    let status = if is_online { "Online" } else { "Offline" };
-    let _status_text = format!("Hello, {username} • {status}");
-
-    // For now, we'll update this when we have access to the menu item
-    // This will be improved in the next iteration
-
-    Ok(())
-}

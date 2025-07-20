@@ -2,7 +2,7 @@ import { listen } from '@tauri-apps/api/event';
 import { useEffect, useState } from 'react';
 
 interface AppError {
-  error_type: 'Audio' | 'WebSocket' | 'Settings' | 'Clipboard' | 'Shortcuts' | 'System';
+  error_type: 'Audio' | 'Settings' | 'Clipboard' | 'Shortcuts' | 'System';
   title: string;
   message: string;
   details?: string;
@@ -62,8 +62,6 @@ export function ErrorDisplay() {
     switch (type) {
       case 'Audio':
         return '🎤';
-      case 'WebSocket':
-        return '🔗';
       case 'Settings':
         return '⚙️';
       case 'Clipboard':
@@ -81,8 +79,6 @@ export function ErrorDisplay() {
     switch (type) {
       case 'Audio':
         return 'border-l-blue-500';
-      case 'WebSocket':
-        return 'border-l-emerald-500';
       case 'Settings':
         return 'border-l-violet-500';
       case 'Clipboard':

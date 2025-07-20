@@ -5,7 +5,6 @@ mod shortcuts;
 mod simple_audio;
 mod tray;
 mod updater;
-mod websocket;
 
 use clipboard::{copy_to_clipboard, get_clipboard_text, paste_at_cursor};
 use error_handler::{clear_error_logs, get_error_logs, report_error, ErrorHandler};
@@ -22,10 +21,6 @@ use std::sync::{Arc, Mutex};
 use tauri::{Listener, Manager, WebviewUrl, WebviewWindowBuilder};
 use updater::{
     check_for_updates, download_and_install_update, get_update_info, check_and_prompt_for_update,
-};
-use websocket::{
-    connect_websocket, disconnect_websocket, get_websocket_config, get_websocket_status,
-    send_audio_data, update_websocket_config, WebSocketClient,
 };
 
 #[tauri::command]
@@ -110,12 +105,6 @@ pub fn run() {
             stop_recording,
             is_recording,
             get_audio_data,
-            connect_websocket,
-            disconnect_websocket,
-            get_websocket_status,
-            update_websocket_config,
-            get_websocket_config,
-            send_audio_data,
             show_processing_overlay,
             hide_processing_overlay,
             get_app_settings,
@@ -149,10 +138,6 @@ pub fn run() {
             // Create system tray
             tray::create_tray(app.handle())?;
 
-            // Get username for the menu
-            let username = whoami::username();
-            tray::update_tray_status(app.handle(), &username, false)?;
-
             // Initialize shortcuts manager with saved settings
             let shortcut_manager = ShortcutManager::new(app.handle().clone());
             shortcut_manager.init_with_config(saved_settings.shortcuts.clone())?;
@@ -174,104 +159,11 @@ pub fn run() {
 
             app.manage(audio_recorder);
 
-            // Initialize WebSocket client with saved settings
-            let websocket_client = Arc::new(Mutex::new(WebSocketClient::new(app.handle().clone())));
-            {
-                let client = websocket_client.lock().unwrap();
-                client.update_config(saved_settings.websocket.clone());
-            }
-            app.manage(websocket_client);
-
             // Listen for show processing overlay events
             let app_handle = app.handle().clone();
             app.listen("show_processing_overlay", move |_event| {
                 if let Err(e) = show_processing_overlay(app_handle.clone()) {
                     log::error!("Failed to show processing overlay: {e}");
-                }
-            });
-
-            // Listen for audio streaming events
-            let app_handle_audio = app.handle().clone();
-            app.listen("send_audio_to_websocket", move |event| {
-                if let Ok(audio_data) = serde_json::from_str::<Vec<u8>>(event.payload()) {
-                    if let Some(ws_client) =
-                        app_handle_audio.try_state::<websocket::WebSocketClientState>()
-                    {
-                        let client = ws_client.lock().unwrap();
-                        if let Err(e) = client.send_audio_data(audio_data) {
-                            let error_handler = ErrorHandler::new(app_handle_audio.clone());
-                            error_handler.handle_websocket_error(
-                                "Failed to send audio data to backend",
-                                Some(&e)
-                            );
-                        }
-                    }
-                }
-            });
-
-            // Listen for real-time audio chunks
-            let app_handle_chunk = app.handle().clone();
-            app.listen("audio_chunk", move |event| {
-                if let Ok(audio_data) = serde_json::from_str::<Vec<u8>>(event.payload()) {
-                    if let Some(ws_client) =
-                        app_handle_chunk.try_state::<websocket::WebSocketClientState>()
-                    {
-                        let client = ws_client.lock().unwrap();
-                        if let Err(e) = client.send_audio_data(audio_data) {
-                            let error_handler = ErrorHandler::new(app_handle_chunk.clone());
-                            error_handler.handle_websocket_error(
-                                "Failed to stream audio chunk to backend",
-                                Some(&e)
-                            );
-                        }
-                    }
-                }
-            });
-            
-            // Listen for WebSocket reconnection events
-            let app_handle_reconnect = app.handle().clone();
-            app.listen("websocket_reconnect", move |_event| {
-                let app_clone = app_handle_reconnect.clone();
-                tokio::spawn(async move {
-                    if let Some(ws_client) = app_clone.try_state::<websocket::WebSocketClientState>() {
-                        if let Err(e) = websocket::reconnect_websocket(&ws_client).await {
-                            let error_handler = ErrorHandler::new(app_clone.clone());
-                            error_handler.handle_websocket_error(
-                                "Automatic reconnection failed",
-                                Some(&e)
-                            );
-                        }
-                    }
-                });
-            });
-
-            // Listen for transcription responses and handle clipboard integration
-            let app_handle_transcription = app.handle().clone();
-            app.listen("transcription_response", move |event| {
-                if let Ok(response) = serde_json::from_str::<websocket::TranscriptionResponse>(event.payload()) {
-                    // Only handle final transcriptions with enhanced text
-                    if response.is_final {
-                        let text_to_paste = response.enhanced_text.unwrap_or(response.transcript);
-                        let error_handler = ErrorHandler::new(app_handle_transcription.clone());
-                        
-                        // Paste the enhanced text at cursor position
-                        if let Err(e) = paste_at_cursor(text_to_paste.clone(), app_handle_transcription.clone()) {
-                            error_handler.handle_clipboard_error(
-                                "Failed to paste enhanced text at cursor",
-                                Some(&e)
-                            );
-                            
-                            // Fallback: just copy to clipboard
-                            if let Err(e2) = copy_to_clipboard(text_to_paste) {
-                                error_handler.handle_clipboard_error(
-                                    "Failed to copy enhanced text to clipboard",
-                                    Some(&e2)
-                                );
-                            }
-                        } else {
-                            log::debug!("Successfully pasted enhanced text at cursor");
-                        }
-                    }
                 }
             });
 

@@ -112,7 +112,7 @@ impl SimpleAudioRecorder {
                                 }
                             }
 
-                            // Convert to bytes and send to WebSocket
+                            // Convert to bytes
                             let audio_bytes: Vec<u8> = chunk
                                 .iter()
                                 .flat_map(|&f| f.to_le_bytes().to_vec())
@@ -166,7 +166,7 @@ impl SimpleAudioRecorder {
                                 }
                             }
 
-                            // Convert to bytes and send to WebSocket
+                            // Convert to bytes
                             let audio_bytes: Vec<u8> = chunk
                                 .iter()
                                 .flat_map(|&f| f.to_le_bytes().to_vec())
@@ -220,7 +220,7 @@ impl SimpleAudioRecorder {
                                 }
                             }
 
-                            // Convert to bytes and send to WebSocket
+                            // Convert to bytes
                             let audio_bytes: Vec<u8> = chunk
                                 .iter()
                                 .flat_map(|&f| f.to_le_bytes().to_vec())
@@ -275,7 +275,7 @@ impl SimpleAudioRecorder {
         // Get the recorded audio data
         let audio_data = self.get_audio_data();
 
-        // Convert f32 to bytes for WebSocket transmission
+        // Convert f32 to bytes
         let audio_bytes: Vec<u8> = audio_data
             .iter()
             .flat_map(|&f| f.to_le_bytes().to_vec())
@@ -284,10 +284,7 @@ impl SimpleAudioRecorder {
         // Emit recording stopped event with audio data
         let _ = self.app.emit("recording_stopped", &audio_bytes);
 
-        // Send audio data to WebSocket if available
-        if !audio_bytes.is_empty() {
-            let _ = self.app.emit("send_audio_to_websocket", &audio_bytes);
-        }
+        // Audio data is now sent via HTTP REST API
 
         log::info!("Recording stopped, {} bytes captured", audio_bytes.len());
 

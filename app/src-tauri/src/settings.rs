@@ -1,5 +1,4 @@
 use crate::shortcuts::ShortcutConfig;
-use crate::websocket::WebSocketConfig;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -8,7 +7,6 @@ use tauri::{AppHandle, Manager};
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct AppSettings {
     pub shortcuts: ShortcutConfig,
-    pub websocket: WebSocketConfig,
     pub selected_microphone: Option<String>,
 }
 
@@ -16,15 +14,6 @@ impl std::fmt::Debug for AppSettings {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppSettings")
             .field("shortcuts", &self.shortcuts)
-            .field(
-                "websocket",
-                &format!(
-                    "WebSocketConfig {{ url: '{}', auto_reconnect: {}, reconnect_interval: {} }}",
-                    self.websocket.url,
-                    self.websocket.auto_reconnect,
-                    self.websocket.reconnect_interval
-                ),
-            )
             .field("selected_microphone", &self.selected_microphone)
             .finish()
     }
@@ -81,7 +70,6 @@ pub fn save_app_settings(
     app: AppHandle,
     settings: AppSettings,
     shortcut_state: tauri::State<crate::shortcuts::ShortcutManagerState>,
-    websocket_state: tauri::State<crate::websocket::WebSocketClientState>,
     audio_state: tauri::State<std::sync::Arc<crate::simple_audio::SimpleAudioRecorder>>,
 ) -> Result<(), String> {
     // Save settings to file
@@ -93,12 +81,6 @@ pub fn save_app_settings(
         if let Err(e) = manager.update_shortcuts(settings.shortcuts.clone()) {
             log::error!("Failed to update shortcuts: {e}");
         }
-    }
-
-    // Apply websocket settings
-    {
-        let client = websocket_state.lock().unwrap();
-        client.update_config(settings.websocket.clone());
     }
 
     // Apply audio settings
