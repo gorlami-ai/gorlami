@@ -8,6 +8,7 @@ import { storageService } from '../services/storage.js';
 import type { AuthenticatedRequest, ProcessRequestBody, ProcessResponse } from '../types/index.js';
 import { AppError } from '../middleware/error.js';
 import { listActivitiesQuerySchema } from '../utils/validation.js';
+import logger from '../utils/logger.js';
 
 export async function processText(
   req: AuthenticatedRequest,
@@ -49,7 +50,7 @@ export async function processText(
 
     res.json(response);
   } catch (error) {
-    console.error('Error processing text:', error);
+    logger.error(error, 'Error processing text');
     throw new AppError('Failed to process text', 500);
   }
 }
@@ -131,7 +132,7 @@ export async function transcribeAudio(
 
     res.json(response);
   } catch (error) {
-    console.error('Error transcribing audio:', error);
+    logger.error(error, 'Error transcribing audio');
     throw error instanceof AppError ? error : new AppError('Failed to transcribe audio', 500);
   }
 }
@@ -166,7 +167,7 @@ export async function listActivities(
       limit: query.limit,
     });
   } catch (error) {
-    console.error('Error listing activities:', error);
+    logger.error(error, 'Error listing activities');
     throw new AppError('Failed to list activities', 500);
   }
 }
@@ -200,7 +201,7 @@ export async function getActivity(
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting activity:', error);
+    logger.error(error, 'Error getting activity');
     throw error instanceof AppError ? error : new AppError('Failed to get activity', 500);
   }
 }

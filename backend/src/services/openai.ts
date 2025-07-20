@@ -3,12 +3,18 @@ import { env } from '../config/env.js';
 
 export class OpenAIService {
   private client: OpenAI;
+  private readonly deploymentName = 'gpt-4o-mini';
+  private readonly apiVersion = '2025-01-01-preview';
+  private readonly defaultTemperature = 0.7;
+  private readonly defaultMaxTokens = 2000;
+  private readonly enhancementTemperature = 0.3;
+  private readonly enhancementMaxTokens = 500;
 
   constructor() {
     this.client = new OpenAI({
       apiKey: env.AZURE_OPENAI_API_KEY,
-      baseURL: `${env.AZURE_OPENAI_ENDPOINT_URL}/openai/deployments/${env.AZURE_OPENAI_DEPLOYMENT_NAME}`,
-      defaultQuery: { 'api-version': env.OPENAI_API_VERSION },
+      baseURL: `${env.AZURE_OPENAI_ENDPOINT_URL}/openai/deployments/${this.deploymentName}`,
+      defaultQuery: { 'api-version': this.apiVersion },
       defaultHeaders: { 'api-key': env.AZURE_OPENAI_API_KEY },
     });
   }
@@ -16,11 +22,11 @@ export class OpenAIService {
   async processText(
     text: string,
     instruction: string = 'Improve clarity and formatting',
-    temperature: number = env.OPENAI_TEMPERATURE,
-    maxTokens: number = env.OPENAI_MAX_TOKENS
+    temperature: number = this.defaultTemperature,
+    maxTokens: number = this.defaultMaxTokens
   ): Promise<{ content: string; totalTokens: number | undefined }> {
     const response = await this.client.chat.completions.create({
-      model: env.AZURE_OPENAI_DEPLOYMENT_NAME,
+      model: this.deploymentName,
       messages: [
         {
           role: 'system',
@@ -45,7 +51,7 @@ export class OpenAIService {
     transcript: string
   ): Promise<{ content: string; totalTokens: number | undefined }> {
     const response = await this.client.chat.completions.create({
-      model: env.AZURE_OPENAI_DEPLOYMENT_NAME,
+      model: this.deploymentName,
       messages: [
         {
           role: 'system',
@@ -56,8 +62,8 @@ export class OpenAIService {
           content: transcript,
         },
       ],
-      temperature: env.OPENAI_ENHANCEMENT_TEMPERATURE,
-      max_tokens: env.OPENAI_ENHANCEMENT_MAX_TOKENS,
+      temperature: this.enhancementTemperature,
+      max_tokens: this.enhancementMaxTokens,
     });
 
     return {

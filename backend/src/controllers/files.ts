@@ -3,6 +3,7 @@ import { prisma } from '../services/database.js';
 import { storageService } from '../services/storage.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 import { AppError } from '../middleware/error.js';
+import logger from '../utils/logger.js';
 
 export async function downloadFile(
   req: AuthenticatedRequest,
@@ -39,7 +40,7 @@ export async function downloadFile(
 
     res.send(buffer);
   } catch (error) {
-    console.error('Error downloading file:', error);
+    logger.error(error, 'Error downloading file');
     throw error instanceof AppError ? error : new AppError('Failed to download file', 500);
   }
 }

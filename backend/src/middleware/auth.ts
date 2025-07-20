@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env.js';
 import type { AuthenticatedRequest } from '../types/index.js';
+import logger from '../utils/logger.js';
 
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
 
@@ -30,7 +31,7 @@ export async function authenticate(
     req.userId = user.id;
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    logger.error(error, 'Authentication error');
     res.status(401).json({ error: 'Authentication failed' });
   }
 }

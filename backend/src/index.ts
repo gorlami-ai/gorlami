@@ -1,6 +1,7 @@
 import { prisma } from './services/database.js';
 import { createApp } from './app.js';
 import { env } from './config/env.js';
+import logger from './utils/logger.js';
 
 async function startServer() {
   try {
@@ -13,14 +14,14 @@ async function startServer() {
     const server = app.listen(port, env.SERVER_HOST, () => {
       const address = server.address();
       const bind = typeof address === 'string' ? address : `port ${address?.port}`;
-      console.log(`🚀 Server listening on ${bind} in ${env.NODE_ENV} mode`);
+      logger.info(`🚀 Server listening on ${bind} in ${env.NODE_ENV} mode`);
     });
 
     // Graceful shutdown
     const shutdown = async (signal: string) => {
-      console.log(`\n${signal} received. Shutting down gracefully...`);
+      logger.info(`${signal} received. Shutting down gracefully...`);
       server.close(() => {
-        console.log('HTTP server closed.');
+        logger.info('HTTP server closed.');
       });
       
       await prisma.$disconnect();
@@ -30,7 +31,7 @@ async function startServer() {
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error(error, 'Failed to start server');
     await prisma.$disconnect();
     process.exit(1);
   }
