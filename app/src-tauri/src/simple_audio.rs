@@ -306,6 +306,87 @@ impl SimpleAudioRecorder {
         let data: Vec<f32> = buffer.drain(..).collect();
         data
     }
+
+    pub fn get_audio_pcm(&self) -> Result<(Vec<u8>, u32), String> {
+        let audio_data = self.get_audio_data();
+        if audio_data.is_empty() {
+            return Err("No audio data recorded".to_string());
+        }
+
+        // Store original length for logging
+        let original_length = audio_data.len();
+
+        // Get the original config
+        let config = self.stream_config.lock().unwrap();
+        let config = config.as_ref().ok_or("No stream config available")?;
+        
+        let original_sample_rate = config.sample_rate.0;
+        let original_channels = config.channels as usize;
+        
+        // Target format: 16kHz, mono, 16-bit PCM
+        const TARGET_SAMPLE_RATE: u32 = 16000;
+        
+        // Convert to mono if stereo
+        let mono_samples = if original_channels > 1 {
+            // Mix down to mono by averaging channels
+            audio_data
+                .chunks(original_channels)
+                .map(|chunk| chunk.iter().sum::<f32>() / original_channels as f32)
+                .collect::<Vec<f32>>()
+        } else {
+            audio_data
+        };
+        
+        // Downsample if needed
+        let resampled = if original_sample_rate != TARGET_SAMPLE_RATE {
+            // Simple linear interpolation resampling
+            let ratio = original_sample_rate as f32 / TARGET_SAMPLE_RATE as f32;
+            let new_length = (mono_samples.len() as f32 / ratio) as usize;
+            let mut resampled = Vec::with_capacity(new_length);
+            
+            for i in 0..new_length {
+                let src_index = i as f32 * ratio;
+                let index = src_index as usize;
+                let fraction = src_index - index as f32;
+                
+                if index + 1 < mono_samples.len() {
+                    // Linear interpolation
+                    let sample = mono_samples[index] * (1.0 - fraction) 
+                        + mono_samples[index + 1] * fraction;
+                    resampled.push(sample);
+                } else if index < mono_samples.len() {
+                    resampled.push(mono_samples[index]);
+                }
+            }
+            resampled
+        } else {
+            mono_samples
+        };
+        
+        // Convert f32 samples to 16-bit PCM
+        let pcm_bytes: Vec<u8> = resampled
+            .iter()
+            .flat_map(|&sample| {
+                // Clamp to [-1, 1] range
+                let clamped = sample.clamp(-1.0, 1.0);
+                // Convert to i16
+                let i16_sample = (clamped * 32767.0) as i16;
+                // Convert to little-endian bytes
+                i16_sample.to_le_bytes().to_vec()
+            })
+            .collect();
+        
+        log::info!(
+            "Converted audio: {} Hz {} ch → {} Hz mono, {} samples → {} bytes",
+            original_sample_rate,
+            original_channels,
+            TARGET_SAMPLE_RATE,
+            original_length,
+            pcm_bytes.len()
+        );
+        
+        Ok((pcm_bytes, TARGET_SAMPLE_RATE))
+    }
 }
 
 // Tauri commands
@@ -370,4 +451,9 @@ pub fn is_recording(state: tauri::State<Arc<SimpleAudioRecorder>>) -> bool {
 #[tauri::command]
 pub fn get_audio_data(state: tauri::State<Arc<SimpleAudioRecorder>>) -> Vec<f32> {
     state.inner().get_audio_data()
+}
+
+#[tauri::command]
+pub fn get_audio_pcm(state: tauri::State<Arc<SimpleAudioRecorder>>) -> Result<(Vec<u8>, u32), String> {
+    state.inner().get_audio_pcm()
 }

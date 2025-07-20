@@ -14,7 +14,7 @@ use shortcuts::{
     validate_shortcut, ShortcutManager, ShortcutManagerState,
 };
 use simple_audio::{
-    get_audio_data, get_audio_devices, is_recording, select_audio_device, start_recording,
+    get_audio_data, get_audio_devices, get_audio_pcm, is_recording, select_audio_device, start_recording,
     stop_recording, SimpleAudioRecorder,
 };
 use std::sync::{Arc, Mutex};
@@ -105,6 +105,7 @@ pub fn run() {
             stop_recording,
             is_recording,
             get_audio_data,
+            get_audio_pcm,
             show_processing_overlay,
             hide_processing_overlay,
             get_app_settings,
