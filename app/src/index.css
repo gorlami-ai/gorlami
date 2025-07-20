@@ -1,6 +1,26 @@
 @import "tailwindcss";
 @import "./theme.css";
 
+@layer utilities {
+  .bg-primary-50 { background-color: var(--color-primary-50); }
+  .bg-primary-100 { background-color: var(--color-primary-100); }
+  .bg-primary-200 { background-color: var(--color-primary-200); }
+  .bg-primary-500 { background-color: var(--color-primary-500); }
+  .bg-primary-600 { background-color: var(--color-primary-600); }
+  
+  .text-primary-500 { color: var(--color-primary-500); }
+  .text-primary-600 { color: var(--color-primary-600); }
+  .text-primary-700 { color: var(--color-primary-700); }
+  
+  .border-primary-500 { border-color: var(--color-primary-500); }
+  
+  .hover\:bg-primary-100:hover { background-color: var(--color-primary-100); }
+  .hover\:bg-primary-200:hover { background-color: var(--color-primary-200); }
+  .hover\:bg-primary-600:hover { background-color: var(--color-primary-600); }
+  
+  .focus\:ring-primary-500:focus { --tw-ring-color: var(--color-primary-500); }
+}
+
 @layer base {
   :root {
     @apply bg-white text-gray-900;
