@@ -168,11 +168,11 @@ export function Settings() {
 
   return (
     <div className="p-6 min-h-screen bg-white">
-      <div className="mb-4">
-        <h1 className="text-gray-900 text-2xl font-semibold">Settings</h1>
-      </div>
-
-      <div className="max-w-2xl">
+      <div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-600 mt-1">Configure shortcuts, audio settings, and check for updates</p>
+        </div>
         {/* Keyboard Shortcuts Section */}
         <section className="mb-6">
           <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">

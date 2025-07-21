@@ -151,10 +151,7 @@ impl<R: Runtime> ShortcutManager<R> {
                                 // Emit event to frontend
                                 let _ = app_clone.emit("shortcut_triggered", "edit");
 
-                                // TODO: Implement edit functionality
-                                // For now, just show a notification
-                                let _ = app_clone
-                                    .emit("edit_triggered", "Edit functionality not yet implemented");
+                                let _ = app_clone.emit("edit_triggered", ());
                             }
                         },
                     ) {

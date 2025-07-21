@@ -6,7 +6,7 @@ mod simple_audio;
 mod tray;
 mod updater;
 
-use clipboard::{copy_to_clipboard, get_clipboard_text, paste_at_cursor};
+use clipboard::{copy_to_clipboard, get_clipboard_text, get_selected_text, paste_at_cursor};
 use error_handler::{clear_error_logs, get_error_logs, report_error, ErrorHandler};
 use settings::{get_app_settings, reset_app_settings, save_app_settings};
 use shortcuts::{
@@ -114,6 +114,7 @@ pub fn run() {
             copy_to_clipboard,
             paste_at_cursor,
             get_clipboard_text,
+            get_selected_text,
             get_error_logs,
             clear_error_logs,
             report_error,

@@ -51,6 +51,22 @@ export function ProcessingOverlay() {
       setErrorMessage(error);
       scheduleHide(hideOverlay, 4000);
     },
+    onEditingStarted: () => {
+      setProcessingState('selecting');
+      setErrorMessage('');
+      showOverlay();
+      // Change to editing state after a short delay
+      setTimeout(() => setProcessingState('editing'), 500);
+    },
+    onEditingComplete: () => {
+      setProcessingState('complete');
+      scheduleHide(hideOverlay, 1500);
+    },
+    onEditingError: (error: string) => {
+      setProcessingState('error');
+      setErrorMessage(error);
+      scheduleHide(hideOverlay, 4000);
+    },
   };
 
   useProcessingEvents(eventHandlers);
@@ -93,6 +109,18 @@ export function ProcessingOverlay() {
           icon: <div className="w-4 h-4 flex items-center justify-center bg-rose-500 text-white rounded-full text-xs font-bold">⚠</div>,
           text: errorMessage || 'Error occurred',
           className: 'flex items-center gap-3 text-rose-500 font-medium text-sm min-w-[220px]',
+        };
+      case 'selecting':
+        return {
+          icon: <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>,
+          text: 'Getting selection...',
+          className: 'flex items-center gap-3 text-white',
+        };
+      case 'editing':
+        return {
+          icon: <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>,
+          text: 'Editing text...',
+          className: 'flex items-center gap-3 text-white',
         };
       default:
         return {

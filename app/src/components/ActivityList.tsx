@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ActivityItem } from './ActivityItem';
 import { Search } from 'lucide-react';
+import { backendService } from '../services/backend';
+import { logger } from '../utils/logger';
+import { invoke } from '@tauri-apps/api/core';
+import { recordingService } from '../services/recording';
 
 interface Activity {
   id: string;
@@ -10,59 +14,49 @@ interface Activity {
   type: 'transcription' | 'text';
 }
 
-const mockActivities: Activity[] = [
-  {
-    id: '1',
-    content: 'Okay, we now want to create a new backend system using Express and TypeScript. The goal is to build a robust API that can handle authentication, data processing, and real-time updates efficiently. We need to consider the following key aspects: First, the authentication system should support JWT tokens, refresh tokens, and OAuth integration with providers like Google, GitHub, and Apple. Second, we need to implement proper rate limiting and request validation to ensure security. Third, the database layer should use Prisma ORM for type safety and migration management. Fourth, we should set up a comprehensive testing suite with Jest for unit tests and Supertest for integration tests. Finally, the deployment pipeline should include Docker containerization and CI/CD with GitHub Actions.',
-    date: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
-    duration: '0:45',
-    type: 'transcription',
-  },
-  {
-    id: '2',
-    content: 'Meeting notes: Discussed the new feature roadmap for Q1 2025. Key priorities include improving the voice recognition accuracy, adding multi-language support, and implementing collaborative features.',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    duration: '1:23',
-    type: 'transcription',
-  },
-  {
-    id: '3',
-    content: 'Quick note about the bug in the authentication flow - users are experiencing timeout issues when trying to log in with social providers.',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-    type: 'text',
-  },
-  {
-    id: '4',
-    content: 'Brainstorming session for the new AI assistant features. Ideas include: context-aware responses, code generation capabilities, integration with popular development tools, and voice command shortcuts. We explored several innovative concepts during this session. First, the context-aware system should maintain conversation history and understand project-specific terminology and patterns. It should be able to reference previous conversations and build upon established context. Second, for code generation, we want to support multiple programming languages with proper syntax highlighting and intelligent suggestions based on the current project structure. The AI should understand common design patterns and suggest idiomatic code for each language. Third, the integration layer needs to work seamlessly with VSCode, IntelliJ, and other popular IDEs through dedicated plugins. We should also consider terminal integration for command-line workflows. Fourth, voice commands should be natural and flexible, allowing users to say things like "create a new React component" or "add error handling to this function". The system should learn from user preferences and adapt its responses accordingly.',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    duration: '2:15',
-    type: 'transcription',
-  },
-  {
-    id: '5',
-    content: 'Research notes on competitive analysis. Reviewed features from similar apps like Whisper, Otter.ai, and Rev. Our key differentiators should be speed, accuracy, and developer-focused features. After extensive analysis, I\'ve identified several areas where we can excel: Real-time processing with minimal latency (under 100ms), support for technical jargon and programming terms that general transcription services struggle with, integration with development workflows including git commits and PR descriptions, custom vocabulary training for team-specific terms and acronyms, and advanced formatting options that preserve code snippets and markdown syntax. We should also focus on privacy-first architecture with local processing options for sensitive content.',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
-    type: 'text',
-  },
-  {
-    id: '6',
-    content: 'Customer feedback summary: Users love the real-time transcription but want better formatting options and the ability to export to different formats like Markdown, PDF, and Word documents.',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-    duration: '0:32',
-    type: 'transcription',
-  },
-  {
-    id: '7',
-    content: 'Technical architecture discussion about migrating from the current monolithic structure to a microservices approach. Need to consider scalability, maintenance, and deployment strategies. The proposed architecture would separate our application into the following services: Authentication Service (handling all auth flows, token management, and user sessions), Transcription Service (managing audio processing, speech-to-text conversion, and real-time streaming), AI Processing Service (handling LLM interactions, prompt management, and response formatting), Storage Service (managing file uploads, transcription storage, and user data), Notification Service (handling webhooks, email notifications, and real-time updates), and API Gateway (routing requests, rate limiting, and load balancing). Each service would have its own database and communicate via message queues for async operations and gRPC for sync calls. We need to carefully plan the migration strategy to ensure zero downtime and data integrity throughout the process.',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7), // 1 week ago
-    duration: '1:45',
-    type: 'transcription',
-  },
-];
-
 export function ActivityList() {
-  const [activities, setActivities] = useState<Activity[]>(mockActivities);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [useMockData, setUseMockData] = useState(false);
+
+  useEffect(() => {
+    fetchActivities();
+    
+    // Set up handler to refresh when new transcription is complete
+    recordingService.setHandlers({
+      onTranscriptionComplete: () => {
+        // Refresh the activities list
+        setTimeout(() => fetchActivities(), 500); // Small delay to ensure backend has saved
+      },
+    });
+  }, []);
+
+  const fetchActivities = async () => {
+    try {
+      setIsLoading(true);
+      const response = await backendService.getActivities(1, 50); // Get first 50 activities
+      
+      // Map backend activities to frontend format
+      const mappedActivities: Activity[] = response.activities.map(activity => ({
+        id: activity.id,
+        content: activity.outputText,
+        date: new Date(activity.createdAt),
+        type: activity.type === 'TRANSCRIPTION' ? 'transcription' : 'text',
+        duration: undefined, // TODO: Extract from providerResponse when available
+      }));
+      
+      setActivities(mappedActivities);
+      setUseMockData(false);
+    } catch (error) {
+      logger.error('Failed to fetch activities', error);
+      // Show empty state if API fails
+      setActivities([]);
+      setUseMockData(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredActivities = activities.filter(activity =>
     activity.content.toLowerCase().includes(searchQuery.toLowerCase())
@@ -72,15 +66,33 @@ export function ActivityList() {
     console.log('Play:', id);
   };
 
-  const handleCopy = (id: string) => {
+  const handleCopy = async (id: string) => {
     const activity = activities.find(a => a.id === id);
     if (activity) {
-      navigator.clipboard.writeText(activity.content);
+      try {
+        await invoke('copy_to_clipboard', { text: activity.content });
+        logger.info('Copied activity to clipboard');
+      } catch (error) {
+        logger.error('Failed to copy to clipboard', error);
+        // Fallback to browser API
+        navigator.clipboard.writeText(activity.content);
+      }
     }
   };
 
-  const handleDelete = (id: string) => {
-    setActivities(activities.filter(a => a.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      // For now, just remove from local state since backend doesn't have delete endpoint yet
+      setActivities(activities.filter(a => a.id !== id));
+      
+      // TODO: When backend has delete endpoint, uncomment this:
+      // await backendService.deleteActivity(id);
+      // await fetchActivities(); // Refresh the list
+    } catch (error) {
+      logger.error('Failed to delete activity', error);
+      // Refresh to restore the deleted item if API fails
+      await fetchActivities();
+    }
   };
 
   const handleRerun = (id: string) => {
@@ -131,21 +143,37 @@ export function ActivityList() {
       </div>
 
       <div className="space-y-3">
-        {filteredActivities.map((activity) => (
-          <ActivityItem
-            key={activity.id}
-            {...activity}
-            onPlay={activity.type === 'transcription' ? () => handlePlay(activity.id) : undefined}
-            onCopy={() => handleCopy(activity.id)}
-            onDelete={() => handleDelete(activity.id)}
-            onRerun={() => handleRerun(activity.id)}
-          />
-        ))}
-        
-        {filteredActivities.length === 0 && (
+        {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No activities found</p>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <p className="text-gray-500 mt-2">Loading activities...</p>
           </div>
+        ) : (
+          <>
+            {filteredActivities.map((activity) => (
+              <ActivityItem
+                key={activity.id}
+                {...activity}
+                onPlay={activity.type === 'transcription' ? () => handlePlay(activity.id) : undefined}
+                onCopy={() => handleCopy(activity.id)}
+                onDelete={() => handleDelete(activity.id)}
+                onRerun={() => handleRerun(activity.id)}
+              />
+            ))}
+            
+            {filteredActivities.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-500">
+                  {searchQuery ? 'No activities match your search' : 'No activities yet'}
+                </p>
+                {useMockData && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    (Unable to connect to backend)
+                  </p>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

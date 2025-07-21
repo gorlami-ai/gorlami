@@ -5,13 +5,15 @@ import { MainLayout } from './layouts/MainLayout';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { UpdateBanner } from './components/UpdateBanner';
 import { useAutoUpdater } from './hooks/useAutoUpdater';
-import { Dashboard } from './pages/Dashboard';
+import { Home } from './pages/Home';
 import { Settings } from './pages/Settings';
 import { Activity } from './pages/Activity';
 import { Login } from './pages/Login';
 import { AuthCallback } from './pages/AuthCallback';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { authService } from './services/auth';
+import { recordingService } from './services/recording';
+import { editModeService } from './services/editMode';
 
 function App() {
   const [windowType, setWindowType] = useState<'main' | 'processing_overlay'>('main');
@@ -28,6 +30,20 @@ function App() {
       setWindowType('processing_overlay');
     } else {
       setWindowType('main');
+      // Initialize recording service for main window only
+      // Service is a singleton, so it will only initialize once
+      recordingService.setHandlers({
+        onError: (error) => {
+          console.error('Recording error:', error);
+        },
+      });
+      
+      // Initialize edit mode service
+      editModeService.setHandlers({
+        onError: (error) => {
+          console.error('Edit mode error:', error);
+        },
+      });
     }
   }, []);
 
@@ -54,7 +70,7 @@ function App() {
                 )
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={<Home />} />
               <Route path="settings" element={<Settings />} />
               <Route path="activity" element={<Activity />} />
             </Route>

@@ -104,3 +104,50 @@ pub fn get_clipboard_text() -> Result<String, String> {
         .get_text()
         .map_err(|e| format!("Failed to get text from clipboard: {e}"))
 }
+
+#[tauri::command]
+pub fn get_selected_text() -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        
+        // Use AppleScript to get the selected text
+        let script = r#"
+            tell application "System Events"
+                keystroke "c" using command down
+            end tell
+            delay 0.1
+            get the clipboard
+        "#;
+        
+        // Save current clipboard content
+        let mut clipboard = Clipboard::new().map_err(|e| format!("Failed to initialize clipboard: {e}"))?;
+        let original_content = clipboard.get_text().unwrap_or_default();
+        
+        // Execute AppleScript to copy selection
+        let output = Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .output()
+            .map_err(|e| format!("Failed to execute AppleScript: {e}"))?;
+        
+        if !output.status.success() {
+            let error = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("AppleScript failed: {error}"));
+        }
+        
+        let selected_text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        
+        // Restore original clipboard content
+        if !original_content.is_empty() {
+            let _ = clipboard.set_text(&original_content);
+        }
+        
+        Ok(selected_text)
+    }
+    
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Getting selected text is not implemented for this platform".to_string())
+    }
+}

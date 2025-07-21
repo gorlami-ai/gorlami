@@ -8,7 +8,9 @@ export type ProcessingState =
   | 'enhancing'
   | 'pasting'
   | 'complete'
-  | 'error';
+  | 'error'
+  | 'selecting'
+  | 'editing';
 
 
 interface ProcessingEventHandlers {
@@ -19,6 +21,9 @@ interface ProcessingEventHandlers {
   onTextPasted: () => void;
   onRecordingError: (error: string) => void;
   onAudioError: (error: string) => void;
+  onEditingStarted?: () => void;
+  onEditingComplete?: (data: { originalText: string; editedText: string }) => void;
+  onEditingError?: (error: string) => void;
 }
 
 export function useProcessingEvents(handlers: ProcessingEventHandlers) {
@@ -46,6 +51,21 @@ export function useProcessingEvents(handlers: ProcessingEventHandlers) {
         listen<string>('audio_error', (event) => {
           handlers.onAudioError(event.payload || 'Audio error');
         }),
+        ...(handlers.onEditingStarted ? [
+          listen('editing_started', () => handlers.onEditingStarted!())
+        ] : []),
+        ...(handlers.onEditingComplete ? [
+          listen<{ originalText: string; editedText: string }>('editing_complete', (event) => {
+            if (event.payload) {
+              handlers.onEditingComplete!(event.payload);
+            }
+          })
+        ] : []),
+        ...(handlers.onEditingError ? [
+          listen<string>('editing_error', (event) => {
+            handlers.onEditingError!(event.payload || 'Editing error');
+          })
+        ] : []),
       ]);
 
       unlistenersRef.current = unlisteners;

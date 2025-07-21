@@ -13,8 +13,10 @@ export interface TranscriptionResponse {
 }
 
 export interface ProcessTextResponse {
-  processedText: string;
+  outputText: string;
   activityId: string;
+  inputText: string;
+  type: string;
   tokensUsed?: {
     prompt: number;
     completion: number;
@@ -36,8 +38,8 @@ export interface Activity {
 export interface ActivitiesResponse {
   activities: Activity[];
   total: number;
-  page: number;
-  totalPages: number;
+  offset: number;
+  limit: number;
 }
 
 export const backendService = {
