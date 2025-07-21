@@ -61,3 +61,5 @@ jobs:
 
       - name: Build Tauri app
         run: pnpm tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: 'dummy-key-for-ci'
