@@ -1,6 +1,6 @@
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/auth';
-import { SignOutIcon } from '../assets/icons';
+import { LogOut } from 'lucide-react';
 
 export function UserMenu() {
   const { user, signOut } = useAuth();
@@ -46,7 +46,7 @@ export function UserMenu() {
         onClick={handleSignOut}
         className="w-full px-3 py-1.5 text-left text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors flex items-center gap-2"
       >
-        <SignOutIcon className="w-4 h-4" />
+        <LogOut size={16} />
         Sign out
       </button>
     </div>

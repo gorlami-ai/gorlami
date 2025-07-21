@@ -1,28 +1,24 @@
 import { NavLink } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
-import { 
-  HomeIcon, 
-  ActivityIcon, 
-  SettingsIcon,
-  GorlamiLogoIcon 
-} from '../assets/icons';
+import { Home, FileText, Settings } from 'lucide-react';
+import { GorlamiLogoIcon } from '../assets/icons';
 
 export function Sidebar() {
   const menuItems = [
     {
       path: '/',
       label: 'Home',
-      icon: <HomeIcon />,
+      icon: <Home size={20} />,
     },
     {
       path: '/activity',
       label: 'Activity',
-      icon: <ActivityIcon />,
+      icon: <FileText size={20} />,
     },
     {
       path: '/settings',
       label: 'Settings',
-      icon: <SettingsIcon />,
+      icon: <Settings size={20} />,
     },
   ];
 

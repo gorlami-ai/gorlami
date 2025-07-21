@@ -1,4 +1,57 @@
+import { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { createLogger } from '../utils/logger';
+
+interface ShortcutConfig {
+  transcription: string;
+  edit: string;
+  transcription_enabled: boolean;
+  edit_enabled: boolean;
+}
+
+const logger = createLogger('Home');
+
+function formatShortcut(shortcut: string): JSX.Element {
+  const parts = shortcut.split('+').map(part => part.trim());
+  
+  return (
+    <>
+      {parts.map((part, index) => (
+        <span key={index}>
+          {index > 0 && <span className="mx-1 text-gray-500">+</span>}
+          <kbd className="inline-flex items-center px-2 py-1 text-sm font-mono bg-white border border-gray-200 rounded text-gray-700">
+            {part.replace('CommandOrControl', '⌘')}
+          </kbd>
+        </span>
+      ))}
+    </>
+  );
+}
+
 export function Home() {
+  const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
+    transcription: 'Loading...',
+    edit: 'Loading...',
+    transcription_enabled: true,
+    edit_enabled: true,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadShortcuts();
+  }, []);
+
+  const loadShortcuts = async () => {
+    try {
+      const appSettings = await invoke<any>('get_app_settings');
+      setShortcuts(appSettings.shortcuts);
+    } catch (error) {
+      logger.error('Failed to load shortcuts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="p-6 min-h-screen bg-white">
       <div>
@@ -18,19 +71,15 @@ export function Home() {
                 </div>
               </div>
               <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-2">Start Recording</h3>
+                <h3 className="text-gray-900 font-semibold mb-2">Transcribe</h3>
                 <div className="mb-3">
-                  <kbd className="inline-flex items-center px-2 py-1 text-sm font-mono bg-white border border-gray-200 rounded text-gray-700">
-                    ⌘
-                  </kbd>
-                  <span className="mx-1 text-gray-500">+</span>
-                  <kbd className="inline-flex items-center px-2 py-1 text-sm font-mono bg-white border border-gray-200 rounded text-gray-700">
-                    Ctrl
-                  </kbd>
-                  <span className="mx-1 text-gray-500">+</span>
-                  <kbd className="inline-flex items-center px-2 py-1 text-sm font-mono bg-white border border-gray-200 rounded text-gray-700">
-                    Space
-                  </kbd>
+                  {loading ? (
+                    <span className="text-sm text-gray-500">Loading...</span>
+                  ) : shortcuts.transcription_enabled ? (
+                    formatShortcut(shortcuts.transcription)
+                  ) : (
+                    <span className="text-sm text-gray-500 italic">Disabled</span>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600">
                   Hold these keys to record your voice. Release to stop and automatically transcribe your speech.
@@ -49,19 +98,15 @@ export function Home() {
                 </div>
               </div>
               <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-2">Edit Mode</h3>
+                <h3 className="text-gray-900 font-semibold mb-2">Edit</h3>
                 <div className="mb-3">
-                  <kbd className="inline-flex items-center px-2 py-1 text-sm font-mono bg-white border border-gray-200 rounded text-gray-700">
-                    ⌘
-                  </kbd>
-                  <span className="mx-1 text-gray-500">+</span>
-                  <kbd className="inline-flex items-center px-2 py-1 text-sm font-mono bg-white border border-gray-200 rounded text-gray-700">
-                    Ctrl
-                  </kbd>
-                  <span className="mx-1 text-gray-500">+</span>
-                  <kbd className="inline-flex items-center px-2 py-1 text-sm font-mono bg-white border border-gray-200 rounded text-gray-700">
-                    E
-                  </kbd>
+                  {loading ? (
+                    <span className="text-sm text-gray-500">Loading...</span>
+                  ) : shortcuts.edit_enabled ? (
+                    formatShortcut(shortcuts.edit)
+                  ) : (
+                    <span className="text-sm text-gray-500 italic">Disabled</span>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600">
                   Quickly edit your last recording. Perfect for making corrections or adding context to your transcriptions.

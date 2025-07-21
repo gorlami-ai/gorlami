@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { GitHubIcon, GorlamiLogoIcon } from '../assets/icons';
+import { GorlamiLogoIcon } from '../assets/icons';
+import { Github } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export function Login() {
@@ -67,7 +68,7 @@ export function Login() {
               className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Sign in with GitHub"
             >
-              <GitHubIcon className="w-5 h-5" />
+              <Github size={20} />
               <span className="font-medium">Sign in with GitHub</span>
             </button>
           </div>
