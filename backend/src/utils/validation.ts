@@ -10,7 +10,10 @@ export const processRequestSchema = z.object({
 export const transcribeRequestSchema = z.object({
   language: z.string().optional().default('en-US'),
   model: z.string().optional().default('nova-2'),
-  enhance: z.boolean().optional().default(true),
+  enhance: z.union([
+    z.boolean(),
+    z.string().transform(val => val === 'true')
+  ]).optional().default(true),
 });
 
 export const listActivitiesQuerySchema = z.object({
