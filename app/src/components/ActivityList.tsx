@@ -43,7 +43,9 @@ export function ActivityList() {
         content: activity.outputText,
         date: new Date(activity.createdAt),
         type: activity.type === 'TRANSCRIPTION' ? 'transcription' : 'text',
-        duration: undefined, // TODO: Extract from providerResponse when available
+        // Duration will be extracted from providerResponse when backend provides it
+        // Format expected: "MM:SS" (e.g., "02:34" for 2 minutes 34 seconds)
+        duration: undefined,
       }));
       
       setActivities(mappedActivities);
@@ -82,12 +84,12 @@ export function ActivityList() {
 
   const handleDelete = async (id: string) => {
     try {
-      // For now, just remove from local state since backend doesn't have delete endpoint yet
+      // Optimistically remove from UI
       setActivities(activities.filter(a => a.id !== id));
       
-      // TODO: When backend has delete endpoint, uncomment this:
-      // await backendService.deleteActivity(id);
-      // await fetchActivities(); // Refresh the list
+      // Note: Backend delete endpoint implementation pending
+      // When available, add: await backendService.deleteActivity(id);
+      logger.info(`Activity ${id} removed from local state (backend delete pending)`);
     } catch (error) {
       logger.error('Failed to delete activity', error);
       // Refresh to restore the deleted item if API fails

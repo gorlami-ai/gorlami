@@ -11,7 +11,6 @@ import { Login } from './pages/Login';
 import { AuthCallback } from './pages/AuthCallback';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { authService } from './services/auth';
-import { setupSimpleRecording } from './services/recording-simple';
 import { editModeService } from './services/editMode';
 
 function App() {
@@ -22,9 +21,6 @@ function App() {
   } = useAutoUpdater();
 
   useEffect(() => {
-    // Initialize simple recording
-    setupSimpleRecording();
-    
     // Initialize edit mode service
     editModeService.setHandlers({
       onError: (error) => {
