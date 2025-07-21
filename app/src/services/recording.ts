@@ -74,15 +74,28 @@ class RecordingService {
       } catch (error) {
         logger.error('Error processing recording', error);
         
+        // Determine error message
+        let errorMessage = 'Failed to process recording';
+        if (error instanceof Error) {
+          if (error.message.includes('fetch')) {
+            errorMessage = 'Cannot connect to backend server';
+          } else if (error.message.includes('401')) {
+            errorMessage = 'Authentication required';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
         if (this.handlers.onError) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           this.handlers.onError(errorMessage);
         }
 
         // Emit error event for UI
-        await emit('recording_error', error instanceof Error ? error.message : 'Failed to process recording');
+        await emit('recording_error', errorMessage);
       } finally {
+        // ALWAYS reset processing flag
         this.isProcessing = false;
+        logger.info('Recording processing completed, flag reset');
       }
     });
   }

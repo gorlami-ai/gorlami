@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { MainLayout } from './layouts/MainLayout';
-import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { UpdateBanner } from './components/UpdateBanner';
 import { useAutoUpdater } from './hooks/useAutoUpdater';
 import { Home } from './pages/Home';
@@ -12,11 +11,10 @@ import { Login } from './pages/Login';
 import { AuthCallback } from './pages/AuthCallback';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { authService } from './services/auth';
-import { recordingService } from './services/recording';
+import { setupSimpleRecording } from './services/recording-simple';
 import { editModeService } from './services/editMode';
 
 function App() {
-  const [windowType, setWindowType] = useState<'main' | 'processing_overlay'>('main');
   const { 
     updateInfo, 
     showNotification, 
@@ -24,32 +22,18 @@ function App() {
   } = useAutoUpdater();
 
   useEffect(() => {
-    // Check which window this is
-    const windowLabel = (window as any).__TAURI_WINDOW_LABEL__;
-    if (windowLabel === 'processing_overlay') {
-      setWindowType('processing_overlay');
-    } else {
-      setWindowType('main');
-      // Initialize recording service for main window only
-      // Service is a singleton, so it will only initialize once
-      recordingService.setHandlers({
-        onError: (error) => {
-          console.error('Recording error:', error);
-        },
-      });
-      
-      // Initialize edit mode service
-      editModeService.setHandlers({
-        onError: (error) => {
-          console.error('Edit mode error:', error);
-        },
-      });
-    }
+    // Initialize simple recording
+    setupSimpleRecording();
+    
+    // Initialize edit mode service
+    editModeService.setHandlers({
+      onError: (error) => {
+        console.error('Edit mode error:', error);
+      },
+    });
   }, []);
 
-  if (windowType === 'processing_overlay') {
-    return <ProcessingOverlay />;
-  }
+  // Removed overlay window handling
 
   return (
     <AuthProvider>

@@ -34,8 +34,11 @@ impl SimpleAudioRecorder {
     pub fn start_recording(&self) -> Result<(), String> {
         let mut recording = self.is_recording.lock().unwrap();
         if *recording {
+            log::warn!("Attempted to start recording while already recording");
             return Err("Already recording".to_string());
         }
+        
+        log::info!("Starting audio recording...");
 
         // Clear the audio buffer
         {
@@ -256,8 +259,10 @@ impl SimpleAudioRecorder {
 
         log::info!("Recording started");
 
-        // Keep the stream alive by forgetting it (for now)
-        // This is a simplified approach - in production, we'd need better stream management
+        // Mark as recording in our global state
+        crate::stream_manager::set_recording(true);
+        
+        // Keep the stream alive by forgetting it
         std::mem::forget(stream);
 
         Ok(())
@@ -271,28 +276,29 @@ impl SimpleAudioRecorder {
 
         // Set recording flag to false
         *recording = false;
+        
+        // Mark as not recording
+        crate::stream_manager::set_recording(false);
 
-        // Get the recorded audio data
-        let audio_data = self.get_audio_data();
+        // Don't drain the buffer here - let get_audio_pcm handle it
+        // Just check the buffer size for logging
+        let buffer_size = {
+            let buffer = self.audio_buffer.lock().unwrap();
+            buffer.len()
+        };
 
-        // Convert f32 to bytes
-        let audio_bytes: Vec<u8> = audio_data
-            .iter()
-            .flat_map(|&f| f.to_le_bytes().to_vec())
-            .collect();
+        // Emit recording stopped event
+        let _ = self.app.emit("recording_stopped", ());
 
-        // Emit recording stopped event with audio data
-        let _ = self.app.emit("recording_stopped", &audio_bytes);
-
-        // Audio data is now sent via HTTP REST API
-
-        log::info!("Recording stopped, {} bytes captured", audio_bytes.len());
+        log::info!("Recording stopped, {buffer_size} samples in buffer");
 
         Ok(())
     }
 
     pub fn is_recording(&self) -> bool {
-        *self.is_recording.lock().unwrap()
+        let is_recording = *self.is_recording.lock().unwrap();
+        log::debug!("is_recording() called, returning: {is_recording}");
+        is_recording
     }
 
     pub fn select_device(&self, device_name: &str) -> Result<(), String> {
@@ -302,16 +308,21 @@ impl SimpleAudioRecorder {
     }
 
     pub fn get_audio_data(&self) -> Vec<f32> {
-        let mut buffer = self.audio_buffer.lock().unwrap();
-        let data: Vec<f32> = buffer.drain(..).collect();
-        data
+        let buffer = self.audio_buffer.lock().unwrap();
+        // Return a clone of the data without draining
+        buffer.iter().cloned().collect()
     }
 
     pub fn get_audio_pcm(&self) -> Result<(Vec<u8>, u32), String> {
-        let audio_data = self.get_audio_data();
+        // Drain the buffer when getting PCM data
+        let mut buffer = self.audio_buffer.lock().unwrap();
+        let audio_data: Vec<f32> = buffer.drain(..).collect();
+        
         if audio_data.is_empty() {
             return Err("No audio data recorded".to_string());
         }
+        
+        log::info!("Converting {} samples to PCM", audio_data.len());
 
         // Store original length for logging
         let original_length = audio_data.len();

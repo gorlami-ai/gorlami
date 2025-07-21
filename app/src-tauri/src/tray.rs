@@ -1,4 +1,4 @@
-use crate::simple_audio::get_audio_devices;
+use crate::audio_recorder::get_audio_devices;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -77,13 +77,8 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
             id if id.starts_with("mic_") => {
                 // Handle microphone selection
                 let device_name = id.strip_prefix("mic_").unwrap_or("Default");
-                if let Some(audio_recorder) =
-                    app.try_state::<std::sync::Arc<crate::simple_audio::SimpleAudioRecorder>>()
-                {
-                    if let Err(e) = audio_recorder.select_device(device_name) {
-                        log::error!("Failed to select audio device: {e}");
-                    }
-                }
+                // For now, just log the selection since our new recorder doesn't have device selection
+                log::info!("User selected microphone: {device_name}");
             }
             _ => {}
         })

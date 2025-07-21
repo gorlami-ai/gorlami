@@ -1,4 +1,4 @@
-use crate::simple_audio::SimpleAudioRecorder;
+use crate::audio_recorder::AudioRecorder;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
@@ -74,34 +74,41 @@ impl<R: Runtime> ShortcutManager<R> {
                                 // Emit event to frontend
                                 let _ = app_clone.emit("shortcut_triggered", "transcription");
 
-                                // Show processing overlay
-                                if let Err(e) = app_clone.emit("show_processing_overlay", ()) {
-                                    log::error!("Failed to show processing overlay: {e}");
-                                }
+                                // Simply emit recording state changes
+                                // The frontend will handle UI updates
 
-                                // Toggle recording
-                                if let Some(recorder) =
-                                    app_clone.try_state::<Arc<SimpleAudioRecorder>>()
-                                {
-                                    if recorder.is_recording() {
-                                        if let Err(e) = recorder.stop_recording() {
-                                            log::error!("Failed to stop recording: {e}");
-                                            let _ = app_clone.emit(
-                                                "recording_error",
-                                                format!("Failed to stop recording: {e}"),
-                                            );
+                                // Toggle recording with detailed logging
+                                log::info!("=== SHORTCUT: Toggle recording attempt ===");
+                                
+                                if let Some(recorder) = app_clone.try_state::<Arc<AudioRecorder>>() {
+                                    let is_recording = recorder.is_recording();
+                                    log::info!("Current recording state: {is_recording}");
+                                    
+                                    if is_recording {
+                                        log::info!("Attempting to STOP recording...");
+                                        match recorder.stop_recording() {
+                                            Ok(()) => {
+                                                log::info!("Successfully stopped recording");
+                                            }
+                                            Err(e) => {
+                                                log::error!("Failed to stop recording: {e}");
+                                                let _ = app_clone.emit("recording_error", format!("Stop failed: {e}"));
+                                            }
                                         }
-                                    } else if let Err(e) = recorder.start_recording() {
-                                        log::error!("Failed to start recording: {e}");
-                                        let _ = app_clone.emit(
-                                            "recording_error",
-                                            format!("Failed to start recording: {e}"),
-                                        );
+                                    } else {
+                                        log::info!("Attempting to START recording...");
+                                        match recorder.start_recording() {
+                                            Ok(()) => {
+                                                log::info!("Successfully started recording");
+                                            }
+                                            Err(e) => {
+                                                log::error!("Failed to start recording: {e}");
+                                                let _ = app_clone.emit("recording_error", format!("Start failed: {e}"));
+                                            }
+                                        }
                                     }
                                 } else {
-                                    log::error!("Audio recorder not available");
-                                    let _ = app_clone
-                                        .emit("recording_error", "Audio recorder not available");
+                                    log::error!("Audio recorder not found in app state!");
                                 }
                             }
                         },

@@ -70,7 +70,7 @@ pub fn save_app_settings(
     app: AppHandle,
     settings: AppSettings,
     shortcut_state: tauri::State<crate::shortcuts::ShortcutManagerState>,
-    audio_state: tauri::State<std::sync::Arc<crate::simple_audio::SimpleAudioRecorder>>,
+    _audio_state: tauri::State<std::sync::Arc<crate::audio_recorder::AudioRecorder>>,
 ) -> Result<(), String> {
     // Save settings to file
     save_settings(&app, &settings)?;
@@ -85,9 +85,8 @@ pub fn save_app_settings(
 
     // Apply audio settings
     if let Some(ref mic_name) = settings.selected_microphone {
-        if let Err(e) = audio_state.inner().select_device(mic_name) {
-            log::error!("Failed to select microphone '{mic_name}': {e}");
-        }
+        // For now, just log the selected microphone
+        log::info!("Selected microphone in settings: {mic_name}");
     }
 
     log::info!("Settings saved and applied successfully");

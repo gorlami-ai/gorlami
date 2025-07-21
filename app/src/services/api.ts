@@ -31,10 +31,18 @@ export async function apiClient<T = any>(
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(`${env.backendApiBaseHttp}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  // Add timeout to prevent hanging requests
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+  
+  try {
+    const response = await fetch(`${env.backendApiBaseHttp}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
 
   if (!response.ok) {
     let errorMessage = `API Error: ${response.status}`;
@@ -48,9 +56,16 @@ export async function apiClient<T = any>(
     }
   }
 
-  if (response.headers.get('content-type')?.includes('application/json')) {
-    return response.json();
-  }
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      return response.json();
+    }
 
-  return response as any;
+    return response as any;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiError(408, 'Request timeout - backend server not responding');
+    }
+    throw error;
+  }
 }

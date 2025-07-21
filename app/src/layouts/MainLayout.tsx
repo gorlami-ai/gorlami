@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
+import { RecordingStatusBar } from '../components/RecordingStatusBar';
 
 export function MainLayout() {
   return (
@@ -8,6 +9,7 @@ export function MainLayout() {
       <main className="flex-1 overflow-y-auto bg-white scrollbar-thin">
         <Outlet />
       </main>
+      <RecordingStatusBar />
     </div>
   );
 }

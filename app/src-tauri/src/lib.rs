@@ -1,24 +1,23 @@
+mod audio_recorder;
 mod clipboard;
 mod error_handler;
 mod settings;
 mod shortcuts;
-mod simple_audio;
 mod tray;
 mod updater;
 
 use clipboard::{copy_to_clipboard, get_clipboard_text, get_selected_text, paste_at_cursor};
 use error_handler::{clear_error_logs, get_error_logs, report_error, ErrorHandler};
 use settings::{get_app_settings, reset_app_settings, save_app_settings};
+use audio_recorder::{
+    get_audio_pcm, is_recording, start_recording, stop_recording, AudioRecorder,
+};
 use shortcuts::{
     disable_shortcuts, enable_shortcuts, get_shortcut_config, update_shortcut_config,
     validate_shortcut, ShortcutManager, ShortcutManagerState,
 };
-use simple_audio::{
-    get_audio_data, get_audio_devices, get_audio_pcm, is_recording, select_audio_device, start_recording,
-    stop_recording, SimpleAudioRecorder,
-};
 use std::sync::{Arc, Mutex};
-use tauri::{Listener, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use updater::{
     check_for_updates, download_and_install_update, get_update_info, check_and_prompt_for_update,
 };
@@ -30,22 +29,41 @@ fn greet(name: &str) -> String {
 
 #[tauri::command]
 fn show_processing_overlay(app: tauri::AppHandle) -> Result<(), String> {
+    log::info!("show_processing_overlay called");
+    
     // Check if overlay window already exists
     if let Some(window) = app.get_webview_window("processing_overlay") {
+        log::info!("Found existing overlay window, showing it");
+        // Make sure window is visible and on top
         let _ = window.show();
-        let _ = window.set_focus();
+        let _ = window.unminimize();
+        let _ = window.set_always_on_top(true);
+        // Don't set focus to avoid stealing from user's current app
         return Ok(());
     }
+    
+    log::info!("Creating new overlay window");
 
-    // Get screen dimensions to position the overlay correctly
-    let physical_size = WebviewWindowBuilder::new(
+    // Get the primary monitor to calculate position
+    let monitor = app.primary_monitor().map_err(|e| format!("Failed to get primary monitor: {e}"))?;
+    let monitor = monitor.ok_or("No primary monitor found")?;
+    let screen_size = monitor.size();
+    
+    // Calculate position for top-right corner (20px margin from right, 60px from top)
+    let window_width = 140.0;
+    let x_position = (screen_size.width as f64) - window_width - 20.0;
+    let y_position = 60.0;
+    
+    log::info!("Window position: x={x_position}, y={y_position}");
+    
+    let _window = WebviewWindowBuilder::new(
         &app,
         "processing_overlay",
         WebviewUrl::App("index.html".into()),
     )
     .title("Processing")
-    .inner_size(280.0, 80.0)
-    .position(20.0, 60.0) // Top-right corner, below menu bar
+    .inner_size(window_width, 120.0)
+    .position(x_position, y_position) // Top-right corner, below menu bar
     .resizable(false)
     .decorations(false)
     .transparent(true)
@@ -53,9 +71,15 @@ fn show_processing_overlay(app: tauri::AppHandle) -> Result<(), String> {
     .skip_taskbar(true)
     .initialization_script("window.__TAURI_WINDOW_LABEL__ = 'processing_overlay';")
     .build()
-    .map_err(|e| format!("Failed to create processing overlay: {e}"))?;
+    .map_err(|e| {
+        log::error!("Failed to create overlay window: {e}");
+        format!("Failed to create processing overlay: {e}")
+    })?;
+    
+    log::info!("Overlay window created successfully");
 
-    let _ = physical_size.set_focus();
+    // Don't set focus - let the overlay stay in background
+    // This prevents stealing focus from user's current app
     Ok(())
 }
 
@@ -99,12 +123,9 @@ pub fn run() {
             validate_shortcut,
             disable_shortcuts,
             enable_shortcuts,
-            get_audio_devices,
-            select_audio_device,
             start_recording,
             stop_recording,
             is_recording,
-            get_audio_data,
             get_audio_pcm,
             show_processing_overlay,
             hide_processing_overlay,
@@ -150,24 +171,10 @@ pub fn run() {
             app.manage(shortcut_manager_state);
 
             // Initialize audio recorder
-            let audio_recorder = Arc::new(SimpleAudioRecorder::new(app.handle().clone()));
-
-            // Set selected microphone if available
-            if let Some(ref mic_name) = saved_settings.selected_microphone {
-                if let Err(e) = audio_recorder.select_device(mic_name) {
-                    log::error!("Failed to select saved microphone '{mic_name}': {e}");
-                }
-            }
-
+            let audio_recorder = Arc::new(AudioRecorder::new(app.handle().clone()));
             app.manage(audio_recorder);
 
-            // Listen for show processing overlay events
-            let app_handle = app.handle().clone();
-            app.listen("show_processing_overlay", move |_event| {
-                if let Err(e) = show_processing_overlay(app_handle.clone()) {
-                    log::error!("Failed to show processing overlay: {e}");
-                }
-            });
+            // Removed overlay window handling - keeping it simple
 
             Ok(())
         })
