@@ -68,12 +68,20 @@ export async function transcribeAudio(
     const { language, model, enhance } = req.body;
     const userId = req.userId;
     const fileId = uuidv4();
+    
+    // Check if it's raw PCM audio
+    let mimetype = file.mimetype;
+    if (mimetype === 'audio/pcm' && req.headers['x-sample-rate']) {
+      // For raw PCM, we need to specify the encoding parameters
+      const sampleRate = req.headers['x-sample-rate'];
+      mimetype = `audio/raw;encoding=signed-integer;bits=16;rate=${sampleRate};endian=little`;
+    }
 
     const storagePath = `${userId}/${fileId}/${file.originalname}`;
     const { error: uploadError } = await storageService.uploadFile(
       storagePath,
       file.buffer,
-      file.mimetype
+      mimetype
     );
 
     if (uploadError) {
@@ -92,7 +100,7 @@ export async function transcribeAudio(
 
     const transcript = await deepgramService.transcribeAudio(
       file.buffer,
-      file.mimetype,
+      mimetype,
       language,
       model
     );
@@ -122,12 +130,11 @@ export async function transcribeAudio(
       },
     });
 
-    const response: ProcessResponse = {
+    // Return transcription-specific response format
+    const response = {
       activityId: activity.id,
-      outputText: activity.outputText,
-      inputText: activity.inputText,
-      type: activity.type,
-      fileId: activity.fileId || undefined,
+      transcription: activity.outputText,
+      enhanced: enhance && outputText !== transcript ? outputText : undefined,
     };
 
     res.json(response);

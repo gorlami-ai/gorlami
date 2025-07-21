@@ -33,7 +33,7 @@ router.post(
 
 router.post(
   '/api/transcribe',
-  upload.single('audio_file'),
+  upload.single('audio'),
   validate(transcribeRequestSchema),
   asyncHandler(activitiesController.transcribeAudio)
 );
