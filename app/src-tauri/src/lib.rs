@@ -1,95 +1,17 @@
-mod audio_recorder;
-mod clipboard;
-mod error_handler;
-mod settings;
-mod shortcuts;
-mod tray;
-mod updater;
+#![allow(clippy::uninlined_format_args)]
 
-use clipboard::{copy_to_clipboard, get_clipboard_text, get_selected_text, paste_at_cursor};
-use error_handler::{clear_error_logs, get_error_logs, report_error, ErrorHandler};
-use settings::{get_app_settings, reset_app_settings, save_app_settings};
-use audio_recorder::{
-    get_audio_pcm, is_recording, start_recording, stop_recording, AudioRecorder,
-};
-use shortcuts::{
-    disable_shortcuts, enable_shortcuts, get_shortcut_config, update_shortcut_config,
-    validate_shortcut, ShortcutManager, ShortcutManagerState,
-};
-use std::sync::{Arc, Mutex};
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
-use updater::{
-    check_for_updates, download_and_install_update, get_update_info, check_and_prompt_for_update,
-};
+mod commands;
+mod error;
+mod platform;
+mod services;
+mod ui;
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {name}! You've been greeted from Rust!")
-}
-
-#[tauri::command]
-fn show_processing_overlay(app: tauri::AppHandle) -> Result<(), String> {
-    log::info!("show_processing_overlay called");
-    
-    // Check if overlay window already exists
-    if let Some(window) = app.get_webview_window("processing_overlay") {
-        log::info!("Found existing overlay window, showing it");
-        // Make sure window is visible and on top
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_always_on_top(true);
-        // Don't set focus to avoid stealing from user's current app
-        return Ok(());
-    }
-    
-    log::info!("Creating new overlay window");
-
-    // Get the primary monitor to calculate position
-    let monitor = app.primary_monitor().map_err(|e| format!("Failed to get primary monitor: {e}"))?;
-    let monitor = monitor.ok_or("No primary monitor found")?;
-    let screen_size = monitor.size();
-    
-    // Calculate position for top-right corner (20px margin from right, 60px from top)
-    let window_width = 140.0;
-    let x_position = (screen_size.width as f64) - window_width - 20.0;
-    let y_position = 60.0;
-    
-    log::info!("Window position: x={x_position}, y={y_position}");
-    
-    let _window = WebviewWindowBuilder::new(
-        &app,
-        "processing_overlay",
-        WebviewUrl::App("index.html".into()),
-    )
-    .title("Processing")
-    .inner_size(window_width, 120.0)
-    .position(x_position, y_position) // Top-right corner, below menu bar
-    .resizable(false)
-    .decorations(false)
-    .transparent(true)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .initialization_script("window.__TAURI_WINDOW_LABEL__ = 'processing_overlay';")
-    .build()
-    .map_err(|e| {
-        log::error!("Failed to create overlay window: {e}");
-        format!("Failed to create processing overlay: {e}")
-    })?;
-    
-    log::info!("Overlay window created successfully");
-
-    // Don't set focus - let the overlay stay in background
-    // This prevents stealing focus from user's current app
-    Ok(())
-}
-
-#[tauri::command]
-fn hide_processing_overlay(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("processing_overlay") {
-        let _ = window.hide();
-    }
-    Ok(())
-}
+use parking_lot::Mutex;
+use services::audio::AudioRecorder;
+use services::error_handler::init_error_storage;
+use services::shortcuts_manager::{ShortcutManager, ShortcutManagerState};
+use std::sync::Arc;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -99,12 +21,13 @@ pub fn run() {
     } else {
         "info"
     };
-    
-    std::env::set_var("RUST_LOG", 
+
+    std::env::set_var(
+        "RUST_LOG",
         std::env::var("RUST_LOG")
-            .unwrap_or_else(|_| format!("gorlami={log_level},tauri={log_level}"))
+            .unwrap_or_else(|_| format!("gorlami={log_level},tauri={log_level}")),
     );
-    
+
     env_logger::init();
     log::info!("Starting Gorlami application");
     log::debug!("Debug logging enabled");
@@ -117,32 +40,40 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
-            greet,
-            get_shortcut_config,
-            update_shortcut_config,
-            validate_shortcut,
-            disable_shortcuts,
-            enable_shortcuts,
-            start_recording,
-            stop_recording,
-            is_recording,
-            get_audio_pcm,
-            show_processing_overlay,
-            hide_processing_overlay,
-            get_app_settings,
-            save_app_settings,
-            reset_app_settings,
-            copy_to_clipboard,
-            paste_at_cursor,
-            get_clipboard_text,
-            get_selected_text,
-            get_error_logs,
-            clear_error_logs,
-            report_error,
-            check_for_updates,
-            download_and_install_update,
-            get_update_info,
-            check_and_prompt_for_update
+            // Audio commands
+            commands::audio::start_recording,
+            commands::audio::stop_recording,
+            commands::audio::is_recording,
+            commands::audio::get_audio_pcm,
+            commands::audio::get_audio_devices,
+            commands::audio::select_audio_device,
+            // Shortcut commands
+            commands::shortcuts::get_shortcut_config,
+            commands::shortcuts::update_shortcut_config,
+            commands::shortcuts::validate_shortcut,
+            commands::shortcuts::disable_shortcuts,
+            commands::shortcuts::enable_shortcuts,
+            // Window commands
+            commands::window::show_processing_overlay,
+            commands::window::hide_processing_overlay,
+            // Settings commands
+            commands::settings::get_app_settings,
+            commands::settings::save_app_settings,
+            commands::settings::reset_app_settings,
+            // Clipboard commands
+            commands::clipboard::copy_to_clipboard,
+            commands::clipboard::paste_at_cursor,
+            commands::clipboard::get_clipboard_text,
+            commands::clipboard::get_selected_text,
+            // Error logging commands
+            services::error_handler::get_error_logs,
+            services::error_handler::clear_error_logs,
+            services::error_handler::report_error,
+            // Update commands
+            commands::updater::check_for_updates,
+            commands::updater::download_and_install_update,
+            commands::updater::get_update_info,
+            commands::updater::check_and_prompt_for_update
         ])
         .setup(|app| {
             // Hide dock icon on macOS
@@ -152,29 +83,36 @@ pub fn run() {
             }
 
             // Load saved settings
-            let saved_settings = settings::load_settings(app.handle());
+            let saved_settings = commands::settings::load_settings(app.handle());
             log::info!("Loaded settings");
 
-            // Initialize error handler
-            let _error_handler = ErrorHandler::new(app.handle().clone());
+            // Initialize error log storage
+            init_error_storage(app.handle());
 
             // Create system tray
-            tray::create_tray(app.handle())?;
+            ui::tray::create_tray(app.handle())?;
 
             // Initialize shortcuts manager with saved settings
             let shortcut_manager = ShortcutManager::new(app.handle().clone());
-            shortcut_manager.init_with_config(saved_settings.shortcuts.clone())?;
+            shortcut_manager
+                .init_with_config(saved_settings.shortcuts.clone())
+                .map_err(|e| tauri::Error::Anyhow(anyhow::anyhow!("{}", e)))?;
 
             // Store shortcut manager in app state
-            let shortcut_manager_state: ShortcutManagerState =
-                Arc::new(Mutex::new(shortcut_manager));
+            let shortcut_manager_state: ShortcutManagerState = Arc::new(Mutex::new(shortcut_manager));
             app.manage(shortcut_manager_state);
 
             // Initialize audio recorder
             let audio_recorder = Arc::new(AudioRecorder::new(app.handle().clone()));
+            
+            // Apply saved microphone selection
+            if let Some(device_name) = saved_settings.selected_microphone {
+                if let Err(e) = audio_recorder.select_device(&device_name) {
+                    log::warn!("Failed to select saved audio device '{}': {}", device_name, e);
+                }
+            }
+            
             app.manage(audio_recorder);
-
-            // Removed overlay window handling - keeping it simple
 
             Ok(())
         })

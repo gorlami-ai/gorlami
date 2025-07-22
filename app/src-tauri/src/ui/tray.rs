@@ -1,9 +1,9 @@
-use crate::audio_recorder::get_audio_devices;
+use crate::services::audio::devices::get_audio_devices;
+use crate::ui::window_utils::open_main_window;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    webview::WebviewWindowBuilder,
-    Manager, Runtime,
+    Runtime,
 };
 
 pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
@@ -61,7 +61,7 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     )?;
 
     let _tray = TrayIconBuilder::with_id("main")
-        .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?)
+        .icon(tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-icon.png"))?)
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id.as_ref() {
@@ -95,54 +95,5 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
         .build(app)?;
 
     Ok(())
-}
-
-fn open_main_window<R: Runtime>(app: &tauri::AppHandle<R>, tab: Option<&str>) {
-    // Check if main window already exists
-    if let Some(window) = app.get_webview_window("main") {
-        // If tab is specified, navigate to it
-        if let Some(tab_name) = tab {
-            let _ = window.eval(format!("window.location.hash = '#{tab_name}'").as_str());
-        }
-        let _ = window.set_focus();
-        let _ = window.show();
-        return;
-    }
-
-    // Create URL with optional hash for tab
-    let url = match tab {
-        Some(tab_name) => format!("index.html#{tab_name}"),
-        None => "index.html".to_string(),
-    };
-
-    // Create new main window
-    let window_result =
-        WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App(url.into()))
-            .title("Gorlami")
-            .inner_size(1200.0, 800.0)
-            .min_inner_size(800.0, 600.0)
-            .resizable(true)
-            .center()
-            .initialization_script("window.__TAURI_WINDOW_LABEL__ = 'main';")
-            .build();
-
-    match window_result {
-        Ok(window) => {
-            // Handle window close event to prevent app shutdown
-            let window_handle = window.clone();
-            window.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    // Hide window instead of closing the app
-                    api.prevent_close();
-                    let _ = window_handle.hide();
-                }
-            });
-            
-            let _ = window.set_focus();
-        }
-        Err(e) => {
-            log::error!("Failed to create main window: {e}");
-        }
-    }
 }
 

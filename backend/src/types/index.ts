@@ -1,5 +1,15 @@
 import { Request } from 'express';
 import { ActivityType } from '@prisma/client';
+import { Logger } from 'pino';
+
+declare global {
+  namespace Express {
+    interface Request {
+      requestId: string;
+      logger: Logger;
+    }
+  }
+}
 
 export interface AuthenticatedRequest extends Request {
   userId: string;

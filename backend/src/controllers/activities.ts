@@ -8,12 +8,8 @@ import { storageService } from '../services/storage.js';
 import type { AuthenticatedRequest, ProcessRequestBody, ProcessResponse } from '../types/index.js';
 import { AppError } from '../middleware/error.js';
 import { listActivitiesQuerySchema } from '../utils/validation.js';
-import logger from '../utils/logger.js';
 
-export async function processText(
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> {
+export async function processText(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { text, instruction, temperature, maxTokens } = req.body as ProcessRequestBody;
     const userId = req.userId;
@@ -50,25 +46,32 @@ export async function processText(
 
     res.json(response);
   } catch (error) {
-    logger.error(error, 'Error processing text');
+    req.logger.error(error, 'Error processing text');
     throw new AppError('Failed to process text', 500);
   }
 }
 
-export async function transcribeAudio(
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> {
+export async function transcribeAudio(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const file = req.file;
     if (!file) {
       throw new AppError('No audio file provided', 400);
     }
 
+    req.logger.info(
+      {
+        filename: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        encoding: file.encoding,
+      },
+      'Received audio file'
+    );
+
     const { language, model, enhance } = req.body;
     const userId = req.userId;
     const fileId = uuidv4();
-    
+
     // Check if it's raw PCM audio
     let mimetype = file.mimetype;
     if (mimetype === 'audio/pcm' && req.headers['x-sample-rate']) {
@@ -78,6 +81,11 @@ export async function transcribeAudio(
     }
 
     const storagePath = `${userId}/${fileId}/${file.originalname}`;
+    req.logger.info(
+      { storagePath, bufferSize: file.buffer.length, mimetype },
+      'Attempting to upload file to storage'
+    );
+
     const { error: uploadError } = await storageService.uploadFile(
       storagePath,
       file.buffer,
@@ -85,8 +93,11 @@ export async function transcribeAudio(
     );
 
     if (uploadError) {
+      req.logger.error({ uploadError, storagePath }, 'Storage upload failed');
       throw new AppError('Failed to upload file', 500);
     }
+
+    req.logger.info({ storagePath }, 'File uploaded successfully');
 
     const fileRecord = await prisma.file.create({
       data: {
@@ -98,12 +109,14 @@ export async function transcribeAudio(
       },
     });
 
+    req.logger.info('Starting Deepgram transcription');
     const transcript = await deepgramService.transcribeAudio(
       file.buffer,
       mimetype,
       language,
       model
     );
+    req.logger.info({ transcriptLength: transcript?.length }, 'Deepgram transcription completed');
 
     let outputText = transcript;
     const providerResponse: any = {
@@ -111,11 +124,15 @@ export async function transcribeAudio(
     };
 
     if (enhance && transcript) {
-      const { content: enhancedText, totalTokens } = await openaiService.enhanceTranscription(
-        transcript
-      );
+      req.logger.info('Enhancing transcription with OpenAI');
+      const { content: enhancedText, totalTokens } =
+        await openaiService.enhanceTranscription(transcript);
       outputText = enhancedText;
       providerResponse.openai = { totalTokens };
+      req.logger.info(
+        { totalTokens, enhancedLength: enhancedText?.length },
+        'Enhancement completed'
+      );
     }
 
     const activity = await prisma.activity.create({
@@ -137,17 +154,15 @@ export async function transcribeAudio(
       enhanced: enhance && outputText !== transcript ? outputText : undefined,
     };
 
+    req.logger.info({ activityId: response.activityId }, 'Transcription completed successfully');
     res.json(response);
   } catch (error) {
-    logger.error(error, 'Error transcribing audio');
+    req.logger.error(error, 'Error transcribing audio');
     throw error instanceof AppError ? error : new AppError('Failed to transcribe audio', 500);
   }
 }
 
-export async function listActivities(
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> {
+export async function listActivities(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const userId = req.userId;
     const query = listActivitiesQuerySchema.parse(req.query);
@@ -174,15 +189,12 @@ export async function listActivities(
       limit: query.limit,
     });
   } catch (error) {
-    logger.error(error, 'Error listing activities');
+    req.logger.error(error, 'Error listing activities');
     throw new AppError('Failed to list activities', 500);
   }
 }
 
-export async function getActivity(
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> {
+export async function getActivity(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { activityId } = req.params;
     const userId = req.userId;
@@ -208,7 +220,7 @@ export async function getActivity(
 
     res.json(response);
   } catch (error) {
-    logger.error(error, 'Error getting activity');
+    req.logger.error(error, 'Error getting activity');
     throw error instanceof AppError ? error : new AppError('Failed to get activity', 500);
   }
 }

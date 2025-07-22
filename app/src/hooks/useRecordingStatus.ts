@@ -8,7 +8,7 @@ export function useRecordingStatus() {
   const [message, setMessage] = useState<string>('');
 
   useEffect(() => {
-    console.log('Setting up recording status listeners...');
+    // console.log('Setting up recording status listeners...');
     const unlisteners: Array<() => void> = [];
 
     const setupListeners = async () => {
@@ -42,16 +42,15 @@ export function useRecordingStatus() {
         await listen('recording_error', (event) => {
           console.error('[UI] Recording error event received', event.payload);
           setState('error');
-          setMessage(event.payload as string || 'Error occurred');
+          setMessage((event.payload as string) || 'Error occurred');
           // Auto-hide after 5 seconds
           setTimeout(() => setState('idle'), 5000);
         })
       );
 
       unlisteners.push(
-        await listen('audio_level', (event) => {
-          // Just log for now, you can add visual feedback later
-          console.log('[UI] Audio level:', event.payload);
+        await listen('audio_level', () => {
+          // Audio level events are available for visual feedback
         })
       );
     };
@@ -59,8 +58,8 @@ export function useRecordingStatus() {
     setupListeners();
 
     return () => {
-      console.log('Cleaning up recording status listeners');
-      unlisteners.forEach(unlisten => unlisten());
+      // console.log('Cleaning up recording status listeners');
+      unlisteners.forEach((unlisten) => unlisten());
     };
   }, []);
 

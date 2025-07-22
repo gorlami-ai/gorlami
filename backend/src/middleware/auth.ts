@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 import logger from '../utils/logger.js';
+import { prisma } from '../services/database.js';
 
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
 
@@ -29,6 +30,19 @@ export async function authenticate(
     }
 
     req.userId = user.id;
+    
+    // Ensure user exists in our database
+    await prisma.user.upsert({
+      where: { id: user.id },
+      create: {
+        id: user.id,
+        email: user.email!,
+      },
+      update: {
+        email: user.email!,
+      },
+    });
+    
     next();
   } catch (error) {
     logger.error(error, 'Authentication error');

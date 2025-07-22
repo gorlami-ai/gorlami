@@ -1,7 +1,8 @@
+use crate::error::AppError;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
-use tauri_plugin_updater::UpdaterExt;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tauri_plugin_updater::UpdaterExt;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct UpdateInfo {
@@ -18,8 +19,10 @@ pub struct UpdateCheckResult {
 }
 
 #[tauri::command]
-pub async fn check_for_updates(app: AppHandle) -> Result<UpdateCheckResult, String> {
-    let updater = app.updater_builder().build().map_err(|e| e.to_string())?;
+pub async fn check_for_updates(app: AppHandle) -> Result<UpdateCheckResult, AppError> {
+    let updater = app.updater_builder()
+        .build()
+        .map_err(|e| AppError::System(format!("Failed to build updater: {}", e)))?;
     
     match updater.check().await {
         Ok(Some(update)) => {
@@ -27,7 +30,7 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateCheckResult, Stri
                 version: update.version.clone(),
                 date: update.date.map(|d| d.to_string()),
                 body: update.body.clone(),
-                download_size: None, // Will be populated when downloading
+                download_size: None,
             };
             
             Ok(UpdateCheckResult {
@@ -39,18 +42,21 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateCheckResult, Stri
             available: false,
             update_info: None,
         }),
-        Err(e) => Err(format!("Failed to check for updates: {e}")),
+        Err(e) => Err(AppError::System(format!("Failed to check for updates: {}", e))),
     }
 }
 
 #[tauri::command]
-pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
-    let updater = app.updater_builder().build().map_err(|e| e.to_string())?;
+pub async fn download_and_install_update(app: AppHandle) -> Result<(), AppError> {
+    let updater = app.updater_builder()
+        .build()
+        .map_err(|e| AppError::System(format!("Failed to build updater: {}", e)))?;
     
     match updater.check().await {
         Ok(Some(update)) => {
             // Emit download started event
-            app.emit("update-download-started", ()).map_err(|e| e.to_string())?;
+            app.emit("update-download-started", ())
+                .map_err(|e| AppError::System(format!("Failed to emit event: {}", e)))?;
             
             // Download and install the update
             let mut downloaded = 0;
@@ -74,18 +80,20 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
                     },
                 )
                 .await
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| AppError::System(format!("Failed to download update: {}", e)))?;
             
             Ok(())
         }
-        Ok(None) => Err("No update available".to_string()),
-        Err(e) => Err(format!("Failed to download update: {e}")),
+        Ok(None) => Err(AppError::System("No update available".to_string())),
+        Err(e) => Err(AppError::System(format!("Failed to check for updates: {}", e))),
     }
 }
 
 #[tauri::command]
-pub async fn get_update_info(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
-    let updater = app.updater_builder().build().map_err(|e| e.to_string())?;
+pub async fn get_update_info(app: AppHandle) -> Result<Option<UpdateInfo>, AppError> {
+    let updater = app.updater_builder()
+        .build()
+        .map_err(|e| AppError::System(format!("Failed to build updater: {}", e)))?;
     
     match updater.check().await {
         Ok(Some(update)) => {
@@ -98,13 +106,15 @@ pub async fn get_update_info(app: AppHandle) -> Result<Option<UpdateInfo>, Strin
             Ok(Some(info))
         }
         Ok(None) => Ok(None),
-        Err(e) => Err(format!("Failed to get update info: {e}")),
+        Err(e) => Err(AppError::System(format!("Failed to get update info: {}", e))),
     }
 }
 
 #[tauri::command]
-pub async fn check_and_prompt_for_update(app: AppHandle) -> Result<bool, String> {
-    let updater = app.updater_builder().build().map_err(|e| e.to_string())?;
+pub async fn check_and_prompt_for_update(app: AppHandle) -> Result<bool, AppError> {
+    let updater = app.updater_builder()
+        .build()
+        .map_err(|e| AppError::System(format!("Failed to build updater: {}", e)))?;
     
     match updater.check().await {
         Ok(Some(update)) => {
@@ -114,7 +124,7 @@ pub async fn check_and_prompt_for_update(app: AppHandle) -> Result<bool, String>
             // Use dialog plugin to show a native dialog
             let dialog_result = app
                 .dialog()
-                .message(format!("Version {version} is now available.\n\n{body}\n\nWould you like to install it now?"))
+                .message(format!("Version {} is now available.\n\n{}\n\nWould you like to install it now?", version, body))
                 .title("Software Update")
                 .kind(MessageDialogKind::Info)
                 .buttons(MessageDialogButtons::YesNo)
@@ -122,7 +132,8 @@ pub async fn check_and_prompt_for_update(app: AppHandle) -> Result<bool, String>
             
             if dialog_result {
                 // User clicked Yes, proceed with download
-                app.emit("update-download-started", ()).map_err(|e| e.to_string())?;
+                app.emit("update-download-started", ())
+                    .map_err(|e| AppError::System(format!("Failed to emit event: {}", e)))?;
                 
                 let mut downloaded = 0;
                 
@@ -143,7 +154,7 @@ pub async fn check_and_prompt_for_update(app: AppHandle) -> Result<bool, String>
                         },
                     )
                     .await
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|e| AppError::System(format!("Failed to download update: {}", e)))?;
                 
                 Ok(true)
             } else {
@@ -152,6 +163,6 @@ pub async fn check_and_prompt_for_update(app: AppHandle) -> Result<bool, String>
             }
         }
         Ok(None) => Ok(false),
-        Err(e) => Err(format!("Failed to check for updates: {e}")),
+        Err(e) => Err(AppError::System(format!("Failed to check for updates: {}", e))),
     }
 }

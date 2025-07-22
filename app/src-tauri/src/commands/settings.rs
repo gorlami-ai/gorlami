@@ -1,4 +1,5 @@
-use crate::shortcuts::ShortcutConfig;
+use crate::error::{AppError, AppResult};
+use crate::services::shortcuts_manager::ShortcutConfig;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -7,6 +8,7 @@ use tauri::{AppHandle, Manager};
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct AppSettings {
     pub shortcuts: ShortcutConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub selected_microphone: Option<String>,
 }
 
@@ -47,21 +49,18 @@ pub fn load_settings(app: &AppHandle) -> AppSettings {
     AppSettings::default()
 }
 
-pub fn save_settings(app: &AppHandle, settings: &AppSettings) -> Result<(), String> {
+pub fn save_settings(app: &AppHandle, settings: &AppSettings) -> AppResult<()> {
     let settings_path = get_settings_path(app);
 
-    let content = serde_json::to_string_pretty(settings)
-        .map_err(|e| format!("Failed to serialize settings: {e}"))?;
-
-    fs::write(&settings_path, content)
-        .map_err(|e| format!("Failed to write settings file: {e}"))?;
+    let content = serde_json::to_string_pretty(settings)?;
+    fs::write(&settings_path, content)?;
 
     Ok(())
 }
 
 // Tauri commands for settings management
 #[tauri::command]
-pub fn get_app_settings(app: AppHandle) -> Result<AppSettings, String> {
+pub fn get_app_settings(app: AppHandle) -> Result<AppSettings, AppError> {
     Ok(load_settings(&app))
 }
 
@@ -69,24 +68,27 @@ pub fn get_app_settings(app: AppHandle) -> Result<AppSettings, String> {
 pub fn save_app_settings(
     app: AppHandle,
     settings: AppSettings,
-    shortcut_state: tauri::State<crate::shortcuts::ShortcutManagerState>,
-    _audio_state: tauri::State<std::sync::Arc<crate::audio_recorder::AudioRecorder>>,
-) -> Result<(), String> {
+    shortcut_state: tauri::State<crate::services::shortcuts_manager::ShortcutManagerState>,
+    audio_state: tauri::State<std::sync::Arc<crate::services::audio::AudioRecorder>>,
+) -> Result<(), AppError> {
     // Save settings to file
     save_settings(&app, &settings)?;
 
     // Apply shortcuts settings
     {
-        let manager = shortcut_state.lock().unwrap();
+        let manager = shortcut_state.lock();
         if let Err(e) = manager.update_shortcuts(settings.shortcuts.clone()) {
             log::error!("Failed to update shortcuts: {e}");
+            return Err(AppError::Shortcut(format!("Failed to update shortcuts: {}", e)));
         }
     }
 
-    // Apply audio settings
-    if let Some(ref mic_name) = settings.selected_microphone {
-        // For now, just log the selected microphone
-        log::info!("Selected microphone in settings: {mic_name}");
+    // Apply selected microphone
+    if let Some(device_name) = &settings.selected_microphone {
+        if let Err(e) = audio_state.select_device(device_name) {
+            log::error!("Failed to select audio device: {e}");
+            // Don't fail the whole save operation for this
+        }
     }
 
     log::info!("Settings saved and applied successfully");
@@ -94,7 +96,7 @@ pub fn save_app_settings(
 }
 
 #[tauri::command]
-pub fn reset_app_settings(app: AppHandle) -> Result<(), String> {
+pub fn reset_app_settings(app: AppHandle) -> Result<(), AppError> {
     let default_settings = AppSettings::default();
     save_settings(&app, &default_settings)
 }
