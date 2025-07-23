@@ -136,22 +136,10 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
       throw new AppError('Failed to transcribe audio', 500);
     }
 
-    let outputText = transcript;
+    const outputText = transcript;
     const providerResponse: ProviderResponse = {
       deepgram: { transcript },
     };
-
-    if (enhance && transcript) {
-      req.logger.info('Enhancing transcription with OpenAI');
-      const { content: enhancedText, totalTokens } =
-        await openaiService.enhanceTranscription(transcript);
-      outputText = enhancedText;
-      providerResponse.openai = { totalTokens };
-      req.logger.info(
-        { totalTokens, enhancedLength: enhancedText?.length },
-        'Enhancement completed'
-      );
-    }
 
     const activity = await prisma.activity.create({
       data: {
