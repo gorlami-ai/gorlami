@@ -5,7 +5,7 @@ import { prisma } from '../services/database.js';
 import { openaiService } from '../services/openai.js';
 import { deepgramService } from '../services/deepgram.js';
 import { storageService } from '../services/storage.js';
-import type { AuthenticatedRequest, ProcessRequestBody, ProcessResponse } from '../types/index.js';
+import type { AuthenticatedRequest, ProcessRequestBody, ProcessResponse, ProviderResponse } from '../types/index.js';
 import { AppError } from '../middleware/error.js';
 import { listActivitiesQuerySchema } from '../utils/validation.js';
 
@@ -132,7 +132,7 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
     }
 
     let outputText = transcript;
-    const providerResponse: any = {
+    const providerResponse: ProviderResponse = {
       deepgram: { transcript },
     };
 

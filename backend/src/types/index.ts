@@ -44,7 +44,7 @@ export interface ActivityListResponse {
     fileId: string | null;
     inputText: string;
     outputText: string;
-    providerResponse: any;
+    providerResponse: ProviderResponse;
     createdAt: Date;
   }>;
   total: number;
