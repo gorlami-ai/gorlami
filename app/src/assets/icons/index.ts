@@ -1,1 +1,0 @@
-export { GorlamiLogoIcon } from './GorlamiLogoIcon';

@@ -18,4 +18,78 @@ Gorlami is a voice-driven AI assistant that uses AI to understand, structure, ed
 3. **Tone & Style Editing:** Highlight text and use voice command to change tone/style
 
 ## Getting Started
-Ask calude based on the CLAUDE.md
+
+### Prerequisites
+
+- macOS (currently macOS-only)
+- Node.js 18+ and pnpm
+- Python 3.13+ and Poetry
+- Rust 1.75+ (for Tauri)
+
+### Quick Start
+
+1. **Start the backend**
+   ```bash
+   cd backend
+   poetry install
+   # ensure envs are sent
+   poetry run start
+   ```
+
+2. **Start the app**
+   ```bash
+   cd app
+   pnpm install
+   pnpm tauri dev
+   ```
+
+3. **Use the app**
+   - Look for the microphone icon in your menu bar
+   - Press `⌘+Ctrl+Space` to start/stop recording
+   - The processing overlay will appear in the top-right corner
+
+## Development
+
+### Project Structure
+```
+gorlami/
+├── app/                    # Tauri desktop app
+└── backend/               # Python FastAPI server
+```
+
+### Available Commands
+
+#### Backend
+```bash
+cd backend
+poetry run start          # Start the server (http://localhost:8000)
+poetry run uvicorn main:app --reload  # Start with auto-reload
+```
+
+#### App
+```bash
+cd app
+pnpm dev                  # Start Vite dev server only
+pnpm tauri dev           # Run full app in development
+pnpm build               # Build frontend assets
+pnpm tauri build         # Build production app (.dmg for macOS)
+```
+
+#### Manual Testing Checklist
+- [ ] App appears in menu bar
+- [ ] Menu dropdown shows correct items
+- [ ] ⌘+Ctrl+Space starts/stops recording
+- [ ] Processing overlay appears when recording
+- [ ] Backend connection status updates
+- [ ] Microphone selection works
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Development Setup
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
