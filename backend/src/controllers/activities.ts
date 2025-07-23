@@ -109,14 +109,27 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
       },
     });
 
-    req.logger.info('Starting Deepgram transcription');
-    const transcript = await deepgramService.transcribeAudio(
-      file.buffer,
-      mimetype,
-      language,
-      model
+    req.logger.info(
+      { mimetype, sampleRate: req.headers['x-sample-rate'] },
+      'Starting Deepgram transcription'
     );
-    req.logger.info({ transcriptLength: transcript?.length }, 'Deepgram transcription completed');
+
+    let transcript: string;
+    try {
+      transcript = await deepgramService.transcribeAudio(file.buffer, mimetype, language, model);
+      req.logger.info({ transcriptLength: transcript?.length }, 'Deepgram transcription completed');
+    } catch (deepgramError) {
+      const errorMessage = deepgramError instanceof Error ? deepgramError.message : 'Unknown error';
+      req.logger.error(
+        {
+          error: errorMessage,
+          mimetype,
+          bufferSize: file.buffer.length,
+        },
+        'Deepgram transcription failed'
+      );
+      throw new AppError('Failed to transcribe audio', 500);
+    }
 
     let outputText = transcript;
     const providerResponse: any = {
