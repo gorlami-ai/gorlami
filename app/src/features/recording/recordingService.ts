@@ -21,6 +21,8 @@ export interface TranscriptionResult {
 class RecordingService {
   private handlers: RecordingHandlers = {};
   private isProcessing = false;
+  private readonly MIN_RECORDING_DURATION_SECONDS =
+    Number(import.meta.env.VITE_MIN_RECORDING_DURATION_SECONDS) || 0.5;
 
   async processRecording(): Promise<TranscriptionResult | null> {
     if (this.isProcessing) {
@@ -34,21 +36,32 @@ class RecordingService {
     try {
       // Get the optimized PCM audio data
       const [pcmData, sampleRate] = await invoke<[number[], number]>('get_audio_pcm');
-      
-      // Convert number array to Uint8Array
+
+      // Convert number array to Uint8Array and then to ArrayBuffer
       const audioBuffer = new Uint8Array(pcmData);
-      
-      logger.info(`Got PCM data: ${audioBuffer.length} bytes at ${sampleRate} Hz`);
+      const arrayBuffer = audioBuffer.buffer.slice(
+        audioBuffer.byteOffset,
+        audioBuffer.byteOffset + audioBuffer.byteLength
+      );
+
+      // Check minimum recording duration
+      const durationSeconds = audioBuffer.length / (sampleRate * 2); // 16-bit PCM = 2 bytes per sample
+      if (durationSeconds < this.MIN_RECORDING_DURATION_SECONDS) {
+        logger.warn(
+          `Recording too short: ${durationSeconds.toFixed(2)}s < ${this.MIN_RECORDING_DURATION_SECONDS}s minimum`
+        );
+        return null;
+      }
+
+      logger.info(
+        `Processing PCM data: ${audioBuffer.length} bytes at ${sampleRate} Hz (${durationSeconds.toFixed(2)}s)`
+      );
 
       // Send to backend for transcription
-      const response = await backendService.transcribeAudio(
-        audioBuffer.buffer,
-        sampleRate,
-        {
-          enhance: true,
-          language: 'en-US',
-        }
-      );
+      const response = await backendService.transcribeAudio(arrayBuffer, sampleRate, {
+        enhance: true,
+        language: 'en-US',
+      });
 
       logger.info('Transcription complete', { activityId: response.activityId });
 
@@ -56,7 +69,7 @@ class RecordingService {
       const result: TranscriptionResult = {
         text: transcriptionText,
         activityId: response.activityId,
-        enhanced: !!response.enhanced
+        enhanced: !!response.enhanced,
       };
 
       // Emit transcription response event for UI
@@ -77,7 +90,7 @@ class RecordingService {
     } catch (error) {
       const errorMessage = await handleError(error, {
         context: 'Recording',
-        showToast: false
+        showToast: false,
       });
 
       if (this.handlers.onError) {
@@ -101,13 +114,10 @@ class RecordingService {
   }
 
   async getActivities(page = 1, limit = 50) {
-    return withErrorHandling(
-      () => backendService.getActivities(page, limit),
-      {
-        context: 'RecordingService',
-        fallbackMessage: 'Failed to fetch activities'
-      }
-    );
+    return withErrorHandling(() => backendService.getActivities(page, limit), {
+      context: 'RecordingService',
+      fallbackMessage: 'Failed to fetch activities',
+    });
   }
 
   async deleteActivity(id: string): Promise<boolean> {
