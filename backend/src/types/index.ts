@@ -57,6 +57,6 @@ export interface ProviderResponse {
     transcript: string;
   };
   openai?: {
-    totalTokens: number | null;
+    totalTokens: number | null | undefined;
   };
 }
