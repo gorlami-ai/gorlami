@@ -1,0 +1,285 @@
+import { getVersion } from '@tauri-apps/api/app';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { useEffect, useState } from 'react';
+import { ShortcutField } from '../components/ShortcutField';
+import { useAutoUpdater } from '../hooks/useAutoUpdater';
+import { createLogger } from '../utils/logger';
+
+interface ShortcutConfig {
+  transcription: string;
+  edit: string;
+  transcription_enabled: boolean;
+  edit_enabled: boolean;
+}
+
+interface AudioDevice {
+  name: string;
+  is_default: boolean;
+}
+
+const logger = createLogger('Settings');
+
+export function Settings() {
+  const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
+    transcription: 'fn',
+    edit: 'fn+Shift',
+    transcription_enabled: true,
+    edit_enabled: true,
+  });
+  const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
+  const [selectedDevice, setSelectedDevice] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [currentVersion, setCurrentVersion] = useState<string>('');
+
+  const { isChecking, lastCheck, checkForUpdates } = useAutoUpdater();
+
+  useEffect(() => {
+    loadSettings();
+
+    // Load app version
+    getVersion().then(setCurrentVersion);
+
+
+    // Listen for shortcut feedback
+    const unlistenShortcutUpdated = listen('shortcuts_updated', (event: any) => {
+      logger.info('Shortcuts updated successfully:', event.payload);
+    });
+
+    const unlistenShortcutError = listen('shortcuts_error', (event: any) => {
+      logger.error('Shortcut error:', event.payload);
+    });
+
+    return () => {
+      unlistenShortcutUpdated.then((fn) => fn());
+      unlistenShortcutError.then((fn) => fn());
+    };
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      // Load all settings from persistent storage
+      const appSettings = await invoke<any>('get_app_settings');
+
+      // Apply shortcuts settings
+      setShortcuts(appSettings.shortcuts);
+
+      // Load audio devices
+      const devices = await invoke<AudioDevice[]>('get_audio_devices');
+      setAudioDevices(devices);
+
+      // Set selected device from settings or default
+      if (appSettings.selected_microphone) {
+        setSelectedDevice(appSettings.selected_microphone);
+      } else {
+        const defaultDevice = devices.find((d) => d.is_default);
+        if (defaultDevice) {
+          setSelectedDevice(defaultDevice.name);
+        }
+      }
+
+    } catch (error) {
+      logger.error('Failed to load settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleShortcut = async (
+    key: 'transcription_enabled' | 'edit_enabled',
+    value: boolean
+  ) => {
+    const newShortcuts = { ...shortcuts, [key]: value };
+    setShortcuts(newShortcuts);
+
+    try {
+      // Update shortcuts configuration
+      await invoke('update_shortcut_config', { config: newShortcuts });
+
+      // Save to persistent settings
+      const currentSettings = await invoke<any>('get_app_settings');
+      await invoke('save_app_settings', {
+        settings: {
+          ...currentSettings,
+          shortcuts: newShortcuts,
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to toggle shortcut:', error);
+    }
+  };
+
+  const handleShortcutChange = async (type: keyof ShortcutConfig, value: string) => {
+    setShortcuts((prev) => ({ ...prev, [type]: value }));
+
+    // Validate and auto-save
+    if (value.trim()) {
+      try {
+        await invoke('validate_shortcut', { shortcut: value });
+        logger.debug(`Valid shortcut: ${value}`);
+
+        // Auto-save shortcuts
+        await invoke('update_shortcut_config', {
+          config: { ...shortcuts, [type]: value },
+        });
+
+        // Save to persistent settings
+        const currentSettings = await invoke<any>('get_app_settings');
+        await invoke('save_app_settings', {
+          settings: {
+            ...currentSettings,
+            shortcuts: { ...shortcuts, [type]: value },
+          },
+        });
+      } catch (error) {
+        logger.warn(`Invalid shortcut format: ${value} - ${error}`);
+      }
+    }
+  };
+
+  const selectAudioDevice = async (deviceName: string) => {
+    try {
+      await invoke('select_audio_device', { deviceName });
+      setSelectedDevice(deviceName);
+
+      // Save to persistent settings
+      const currentSettings = await invoke<any>('get_app_settings');
+      await invoke('save_app_settings', {
+        settings: {
+          ...currentSettings,
+          selected_microphone: deviceName,
+        },
+      });
+
+      logger.info('Audio device saved');
+    } catch (error) {
+      logger.error('Failed to select audio device:', error);
+    }
+  };
+
+
+  if (loading) {
+    return (
+      <div className="p-10 min-h-screen bg-white">
+        <div className="text-center py-16 text-gray-500 text-lg">Loading settings...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 min-h-screen bg-white">
+      <div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-600 mt-1">Configure shortcuts, audio settings, and check for updates</p>
+        </div>
+        {/* Keyboard Shortcuts Section */}
+        <section className="mb-6">
+          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
+            Keyboard Shortcuts
+          </h2>
+
+          <div className="space-y-0">
+            <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="transcription-enabled"
+                  checked={shortcuts.transcription_enabled}
+                  onChange={(e) => handleToggleShortcut('transcription_enabled', e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <label
+                  htmlFor="transcription-enabled"
+                  className="text-gray-900 text-sm font-medium"
+                >
+                  Transcribe
+                </label>
+              </div>
+              <ShortcutField
+                value={shortcuts.transcription}
+                onChange={(value) => handleShortcutChange('transcription', value)}
+                placeholder="Click to set shortcut"
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="edit-enabled"
+                  checked={shortcuts.edit_enabled}
+                  onChange={(e) => handleToggleShortcut('edit_enabled', e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <label htmlFor="edit-enabled" className="text-gray-900 text-sm font-medium">
+                  Edit
+                </label>
+              </div>
+              <ShortcutField
+                value={shortcuts.edit}
+                onChange={(value) => handleShortcutChange('edit', value)}
+                placeholder="Click to set shortcut"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Audio Section */}
+        <section className="mb-6">
+          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">Audio</h2>
+
+          <div className="space-y-0">
+            <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <label className="text-gray-900 text-sm font-medium">Microphone</label>
+              <select
+                value={selectedDevice}
+                onChange={(e) => selectAudioDevice(e.target.value)}
+                className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 min-w-[200px]"
+              >
+                {audioDevices.map((device) => (
+                  <option key={device.name} value={device.name}>
+                    {device.name} {device.is_default ? '(Default)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+
+        {/* Updates Section */}
+        <section className="mb-6">
+          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
+            Updates
+          </h2>
+
+          <div className="space-y-0">
+            <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <label className="text-gray-900 text-sm font-medium">Current Version</label>
+              <span className="text-sm text-gray-700">{currentVersion || 'Loading...'}</span>
+            </div>
+
+            <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+              <label className="text-gray-900 text-sm font-medium">Check for Updates</label>
+              <div className="flex items-center gap-2">
+                {lastCheck && (
+                  <span className="text-xs text-gray-500">
+                    Last checked: {lastCheck.toLocaleTimeString()}
+                  </span>
+                )}
+                <button
+                  onClick={() => checkForUpdates(true)}
+                  disabled={isChecking}
+                  className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isChecking ? 'Checking...' : 'Check Now'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

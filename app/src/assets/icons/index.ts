@@ -1,0 +1,1 @@
+export { GorlamiLogoIcon } from './GorlamiLogoIcon';

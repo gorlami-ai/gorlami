@@ -1,193 +1,207 @@
-import { listen } from '@tauri-apps/api/event';
-import { useEffect, useState } from 'react';
-import './ProcessingOverlay.css';
-
-type ProcessingState =
-  | 'idle'
-  | 'recording'
-  | 'transcribing'
-  | 'enhancing'
-  | 'pasting'
-  | 'complete'
-  | 'error';
-type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
-
+import { useCallback, useState, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { useProcessingEvents, useAutoHide, ProcessingState } from '../hooks/useProcessingEvents';
+import { WaveIndicator } from './WaveIndicator';
+import { calculateRMS, AudioLevelSmoother } from '../utils/audioLevel';
 export function ProcessingOverlay() {
   const [processingState, setProcessingState] = useState<ProcessingState>('idle');
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [isVisible, setIsVisible] = useState(false);
-  const [autoHideTimeout, setAutoHideTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const audioSmootherRef = useRef(new AudioLevelSmoother());
 
-  // Auto-hide overlay after delay
-  const scheduleAutoHide = (delay: number = 3000) => {
-    if (autoHideTimeout) {
-      clearTimeout(autoHideTimeout);
+  const { scheduleHide, cancelHide } = useAutoHide();
+
+  const hideOverlay = useCallback(async () => {
+    setIsVisible(false);
+    setProcessingState('idle');
+    // Hide the actual window
+    try {
+      await invoke('hide_processing_overlay');
+    } catch (error) {
+      console.error('Failed to hide overlay window:', error);
     }
-    const timeout = setTimeout(() => {
-      setIsVisible(false);
-      setProcessingState('idle');
-    }, delay);
-    setAutoHideTimeout(timeout);
-  };
+  }, []);
 
-  const showOverlay = () => {
+  const showOverlay = useCallback(() => {
+    console.log('Showing overlay');
     setIsVisible(true);
-    if (autoHideTimeout) {
-      clearTimeout(autoHideTimeout);
-      setAutoHideTimeout(null);
-    }
-  };
+    cancelHide();
+  }, [cancelHide]);
 
-  useEffect(() => {
-    // Listen for recording events
-    const unlistenStart = listen('recording_started', () => {
+  const eventHandlers = {
+    onRecordingStarted: () => {
+      console.log('Recording started event received');
       setProcessingState('recording');
       setErrorMessage('');
+      audioSmootherRef.current.reset();
+      setAudioLevel(0);
       showOverlay();
-    });
-
-    const unlistenStop = listen('recording_stopped', () => {
+    },
+    onRecordingStopped: () => {
+      console.log('Recording stopped event received');
       setProcessingState('transcribing');
-    });
-
-    // Listen for audio chunks (for audio level visualization)
-    const unlistenAudioChunk = listen('audio_chunk', (event: any) => {
-      if (event.payload) {
-        // Calculate audio level from chunk data (simplified)
-        const audioData = event.payload as number[];
-        const level = Math.min(audioData.length / 1000, 1); // Simplified audio level
-        setAudioLevel(level);
-      }
-    });
-
-    // Listen for transcription responses
-    const unlistenTranscription = listen('transcription_response', (event: any) => {
-      if (event.payload?.is_final) {
+    },
+    onAudioChunk: (audioData: number[]) => {
+      // Calculate RMS level from audio data
+      const rmsLevel = calculateRMS(audioData);
+      // Apply smoothing for better visual effect
+      const smoothedLevel = audioSmootherRef.current.addLevel(rmsLevel);
+      setAudioLevel(smoothedLevel);
+    },
+    onTranscriptionResponse: (response: { is_final: boolean; text?: string }) => {
+      console.log('Transcription response received', response);
+      if (response.is_final) {
         setProcessingState('enhancing');
       }
-    });
-
-    // Listen for text pasting
-    const unlistenTextPasted = listen('text_pasted', () => {
+    },
+    onTextPasted: () => {
+      console.log('Text pasted event received');
       setProcessingState('complete');
-      scheduleAutoHide(1500); // Hide after 1.5 seconds
-    });
-
-    // Listen for WebSocket status changes
-    const unlistenWebSocketStatus = listen('websocket_status', (event: any) => {
-      if (event.payload === 'Connected') {
-        setConnectionStatus('connected');
-      } else if (event.payload === 'Connecting') {
-        setConnectionStatus('connecting');
-      } else {
-        setConnectionStatus('disconnected');
-      }
-    });
-
-    // Listen for errors
-    const unlistenRecordingError = listen('recording_error', (event: any) => {
+      scheduleHide(hideOverlay, 1500);
+    },
+    onRecordingError: (error: string) => {
+      console.error('Recording error event received:', error);
       setProcessingState('error');
-      setErrorMessage(event.payload || 'Recording error');
-      scheduleAutoHide(4000); // Hide after 4 seconds for errors
-    });
-
-    const unlistenAudioError = listen('audio_error', (event: any) => {
+      setErrorMessage(error);
+      scheduleHide(hideOverlay, 4000);
+    },
+    onAudioError: (error: string) => {
       setProcessingState('error');
-      setErrorMessage(event.payload || 'Audio error');
-      scheduleAutoHide(4000);
-    });
+      setErrorMessage(error);
+      scheduleHide(hideOverlay, 4000);
+    },
+    onEditingStarted: () => {
+      setProcessingState('selecting');
+      setErrorMessage('');
+      showOverlay();
+      // Change to editing state after a short delay
+      setTimeout(() => setProcessingState('editing'), 500);
+    },
+    onEditingComplete: () => {
+      setProcessingState('complete');
+      scheduleHide(hideOverlay, 1500);
+    },
+    onEditingError: (error: string) => {
+      setProcessingState('error');
+      setErrorMessage(error);
+      scheduleHide(hideOverlay, 4000);
+    },
+  };
 
-    return () => {
-      unlistenStart.then((fn) => fn());
-      unlistenStop.then((fn) => fn());
-      unlistenAudioChunk.then((fn) => fn());
-      unlistenTranscription.then((fn) => fn());
-      unlistenTextPasted.then((fn) => fn());
-      unlistenWebSocketStatus.then((fn) => fn());
-      unlistenRecordingError.then((fn) => fn());
-      unlistenAudioError.then((fn) => fn());
-
-      if (autoHideTimeout) {
-        clearTimeout(autoHideTimeout);
-      }
-    };
-  }, [autoHideTimeout]);
+  useProcessingEvents(eventHandlers);
 
 
   const getStateDisplay = () => {
     switch (processingState) {
       case 'recording':
         return {
-          icon: <div className="pulse-circle"></div>,
+          icon: <WaveIndicator audioLevel={audioLevel} isActive={true} />,
           text: 'Listening...',
-          className: 'recording-state',
+          className: 'flex items-center gap-3 text-white',
+          useWaveIndicator: true,
         };
       case 'transcribing':
         return {
-          icon: <div className="processing-spinner"></div>,
+          icon: (
+            <div className="relative w-5 h-5">
+              <div className="absolute inset-0 rounded-full border-2 border-white/20" />
+              <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-purple-400 border-r-purple-400 animate-spin" />
+            </div>
+          ),
           text: 'Transcribing...',
-          className: 'processing-state',
+          className: 'flex items-center gap-3 text-white',
         };
       case 'enhancing':
         return {
-          icon: <div className="processing-spinner"></div>,
+          icon: (
+            <div className="relative w-5 h-5">
+              <div className="absolute inset-0 rounded-full border-2 border-white/20" />
+              <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-400 border-r-blue-400 animate-spin" />
+            </div>
+          ),
           text: 'Enhancing...',
-          className: 'processing-state',
+          className: 'flex items-center gap-3 text-white',
         };
       case 'pasting':
         return {
-          icon: <div className="processing-spinner"></div>,
+          icon: <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>,
           text: 'Pasting...',
-          className: 'processing-state',
+          className: 'flex items-center gap-3 text-white',
         };
       case 'complete':
         return {
-          icon: <div className="success-icon">✓</div>,
+          icon: (
+            <div className="relative">
+              <div className="w-5 h-5 flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-600 text-white rounded-full animate-fade-in">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-75" />
+            </div>
+          ),
           text: 'Complete!',
-          className: 'success-state',
+          className: 'flex items-center gap-3 text-emerald-400 font-semibold',
         };
       case 'error':
         return {
-          icon: <div className="error-icon">⚠</div>,
+          icon: (
+            <div className="w-5 h-5 flex items-center justify-center bg-gradient-to-br from-rose-400 to-rose-600 text-white rounded-full">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          ),
           text: errorMessage || 'Error occurred',
-          className: 'error-state',
+          className: 'flex items-center gap-3 text-rose-400 font-medium text-sm min-w-[220px]',
+        };
+      case 'selecting':
+        return {
+          icon: <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>,
+          text: 'Getting selection...',
+          className: 'flex items-center gap-3 text-white',
+        };
+      case 'editing':
+        return {
+          icon: <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>,
+          text: 'Editing text...',
+          className: 'flex items-center gap-3 text-white',
         };
       default:
         return {
-          icon: <div className="microphone-icon">🎤</div>,
+          icon: <div className="w-4 h-4 flex items-center justify-center text-base">🎤</div>,
           text: 'Ready',
-          className: 'idle-state',
+          className: 'flex items-center gap-3 text-white',
         };
     }
   };
 
-  // Only show overlay if visible and not in idle state
-  if (!isVisible && processingState === 'idle') {
-    return null;
-  }
+  // Always render the component but control visibility with CSS
+  // This ensures the window stays active
 
   const stateDisplay = getStateDisplay();
 
   return (
-    <div className={`processing-overlay ${isVisible ? 'visible' : ''}`}>
-      <div className="processing-content">
-        <div className="status-indicator">
-          <div className={`connection-dot ${connectionStatus}`}></div>
-        </div>
-
-        <div className={stateDisplay.className}>
-          {stateDisplay.icon}
-          <span>{stateDisplay.text}</span>
-
-          {/* Audio level visualization when recording */}
-          {processingState === 'recording' && (
-            <div className="audio-level-container">
-              <div className="audio-level-bar" style={{ width: `${audioLevel * 100}%` }} />
-            </div>
-          )}
-        </div>
+    <div className="fixed inset-0 bg-transparent">
+      <div className={`w-full h-full flex items-center justify-center transition-all duration-300 ease-in-out ${
+        isVisible && processingState !== 'idle' ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+      }`}>
+      <div className={`bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 animate-slide-in pointer-events-auto transition-all duration-300 ease-in-out ${
+        stateDisplay.useWaveIndicator ? 'px-6 py-4' : 'px-5 py-3'
+      }`}>
+        {stateDisplay.useWaveIndicator ? (
+          <div className="flex flex-col items-center gap-2">
+            {stateDisplay.icon}
+            <span className="text-sm font-medium tracking-wide text-white/90">{stateDisplay.text}</span>
+          </div>
+        ) : (
+          <div className={stateDisplay.className}>
+            {stateDisplay.icon}
+            <span className="text-sm font-medium tracking-wide">{stateDisplay.text}</span>
+          </div>
+        )}
+      </div>
       </div>
     </div>
   );

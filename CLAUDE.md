@@ -8,14 +8,16 @@ Gorlami is a voice-driven AI assistant for macOS that captures voice input, prov
 ## Architecture
 The system consists of two main components:
 
-1. **Python FastAPI backend** (`/backend`) - Handles WebSocket connections, speech-to-text via Deepgram, and AI processing via Azure OpenAI
-2. **Tauri macOS app** (`/app`) - Native desktop application with React frontend and Rust backend. We are only developing for MacOS!
+1. **Express TypeScript backend** (`/backend`) - REST API that handles speech-to-text via Deepgram and AI processing via Azure OpenAI
+2. **Tauri macOS app** (`/app`) - Native desktop application with React frontend and Rust backend. We are only developing for macOS!
 
 ### Tech Stack
-- **Frontend**: Tauri + React 18.3.1 + TypeScript + Vite
-- **Backend**: Python 3.13 + FastAPI + Poetry
+- **Frontend**: Tauri + React + TypeScript + Vite + Tailwind CSS
+- **Backend**: Node.js 22 + Express + TypeScript + Prisma
+- **Database**: PostgreSQL (via Supabase)
 - **AI Services**: Deepgram (STT), Azure OpenAI (LLM)
-- **Communication**: WebSockets for real-time streaming, and REST for others
+- **Authentication**: Supabase Auth
+- **Communication**: REST HTTP
 
 ### Project structure
 ```
@@ -26,9 +28,10 @@ gorlami/
 │   │   ├── src/          # Rust source code
 │   │   └── Cargo.toml    # Rust dependencies
 │   └── package.json      # Node dependencies
-└── backend/               # Python FastAPI server
-    ├── main.py           # WebSocket server
-    └── pyproject.toml    # Python dependencies
+└── backend/               # Express TypeScript API
+    ├── src/              # TypeScript source code
+    ├── prisma/           # Database schema
+    └── package.json      # Node dependencies
 ```
 
 ## Commands
@@ -47,14 +50,17 @@ pnpm run lint        # Run TypeScript and Rust linters (checks for type errors a
 ### Backend Development
 ```bash
 cd backend
-poetry install                           # Install dependencies
-poetry run start
+npm install          # Install dependencies
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run typecheck    # Run TypeScript type checking
+npm run lint         # Run linter
 ```
 
 ## General Principles
 - Plan changes carefully and consider side effects
 - Test thoroughly before reporting task completion
 - Focus on areas specifically mentioned by the user
-- Maintain separation between Tauri frontend and FastAPI backend
+- Maintain separation between Tauri frontend and Express backend
 - Develop small easily testable functions and services
 - Always run the appropriate linter 
