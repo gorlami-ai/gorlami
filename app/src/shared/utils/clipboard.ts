@@ -5,12 +5,9 @@ import { handleError } from './errorHandler';
 
 const logger = createLogger('Clipboard');
 
-const PASTE_DELAY = 100; // milliseconds
-
 export interface ClipboardOptions {
   paste?: boolean;
   emitEvent?: boolean;
-  delay?: number;
 }
 
 export async function copyToClipboard(
@@ -19,8 +16,7 @@ export async function copyToClipboard(
 ): Promise<boolean> {
   const { 
     paste = false, 
-    emitEvent = false,
-    delay = PASTE_DELAY 
+    emitEvent = false
   } = options;
 
   try {
@@ -28,7 +24,6 @@ export async function copyToClipboard(
     logger.debug('Copied to clipboard', { textLength: text.length });
 
     if (paste) {
-      await new Promise(resolve => setTimeout(resolve, delay));
       await pasteAtCursor(text);
     }
 

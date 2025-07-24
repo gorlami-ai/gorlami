@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::platform::audio_permissions;
 use crate::services::audio::{AudioRecorder, devices};
 use std::sync::Arc;
 
@@ -35,3 +36,18 @@ pub fn select_audio_device(
     state.inner().select_device(&device_name)
 }
 
+#[tauri::command]
+pub fn check_microphone_permission() -> Result<String, AppError> {
+    let status = audio_permissions::check_microphone_permission();
+    Ok(format!("{:?}", status))
+}
+
+#[tauri::command]
+pub fn request_microphone_permission() -> Result<bool, AppError> {
+    audio_permissions::request_microphone_permission()
+}
+
+#[tauri::command]
+pub fn open_microphone_preferences() -> Result<(), AppError> {
+    audio_permissions::open_microphone_preferences()
+}

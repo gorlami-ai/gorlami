@@ -3,7 +3,7 @@ import { emit } from '@tauri-apps/api/event';
 import { backendService } from '../../services/backend';
 import { createLogger } from '../../utils/logger';
 import { handleError, withErrorHandling } from '../../shared/utils/errorHandler';
-import { copyAndPaste } from '../../shared/utils/clipboard';
+import { pasteAtCursor } from '../../shared/utils/clipboard';
 
 const logger = createLogger('RecordingService');
 
@@ -83,8 +83,8 @@ class RecordingService {
         this.handlers.onTranscriptionComplete(transcriptionText, response.activityId);
       }
 
-      // Copy to clipboard and paste
-      await copyAndPaste(transcriptionText, { emitEvent: true });
+      // Paste at cursor
+      await pasteAtCursor(transcriptionText);
 
       return result;
     } catch (error) {

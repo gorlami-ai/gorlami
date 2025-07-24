@@ -1,4 +1,5 @@
 use crate::error::{AppError, AppResult};
+use crate::platform::audio_permissions;
 use crate::services::audio::processing::{calculate_rms, convert_to_mono, convert_to_pcm_bytes};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::StreamConfig;
@@ -44,6 +45,19 @@ impl AudioRecorder {
     }
 
     pub fn start_recording(&self) -> AppResult<()> {
+        // Check microphone permission first
+        let permission_status = audio_permissions::check_microphone_permission();
+        match permission_status {
+            audio_permissions::AVAuthorizationStatus::Authorized => {
+                // Permission granted, continue
+            }
+            audio_permissions::AVAuthorizationStatus::NotDetermined => {
+                return Err(AppError::Permission(
+                    "Microphone permission not yet requested. Please grant permission first.".to_string()
+                ));
+            }
+        }
+        
         // Check if already recording
         if self.is_recording.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
             return Err(AppError::Recording("Already recording".to_string()));
@@ -71,7 +85,15 @@ impl AudioRecorder {
                 .ok_or_else(|| AppError::Audio("Selected audio device not found".to_string()))?
         } else {
             host.default_input_device()
-                .ok_or_else(|| AppError::Audio("No default input device found".to_string()))?
+                .ok_or_else(|| {
+                    // Check if it's a permission issue
+                    let permission_status = audio_permissions::check_microphone_permission();
+                    if permission_status != audio_permissions::AVAuthorizationStatus::Authorized {
+                        AppError::Permission("No microphone access. Please grant permission in System Preferences.".to_string())
+                    } else {
+                        AppError::Audio("No default input device found. Please check your microphone connection.".to_string())
+                    }
+                })?
         };
 
         let config = device.default_input_config()?;

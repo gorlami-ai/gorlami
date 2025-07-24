@@ -1,22 +1,21 @@
 use crate::error::AppError;
-use crate::platform::{accessibility, macos};
-use arboard::Clipboard;
-use std::thread;
-use std::time::Duration;
+use crate::platform::accessibility;
 use tauri::Emitter;
+use tauri_plugin_clipboard_manager::ClipboardExt;
 
 // Tauri commands
 #[tauri::command]
-pub fn copy_to_clipboard(text: String) -> Result<(), AppError> {
-    let mut clipboard = Clipboard::new()?;
-    clipboard.set_text(&text)?;
+pub fn copy_to_clipboard(text: String, app: tauri::AppHandle) -> Result<(), AppError> {
+    app.clipboard()
+        .write_text(&text)
+        .map_err(|e| AppError::System(format!("Failed to copy to clipboard: {}", e)))?;
     log::debug!("Copied {} characters to clipboard", text.len());
     Ok(())
 }
 
 #[tauri::command]
 pub fn paste_at_cursor(text: String, app: tauri::AppHandle) -> Result<(), AppError> {
-    // Try native accessibility API first
+    // Only use accessibility API - no fallback
     match accessibility::insert_text_at_cursor(&text) {
         Ok(()) => {
             log::debug!("Pasted text using Accessibility API: {} chars", text.len());
@@ -24,45 +23,38 @@ pub fn paste_at_cursor(text: String, app: tauri::AppHandle) -> Result<(), AppErr
             Ok(())
         }
         Err(e) => {
-            log::warn!("Accessibility API failed: {}, falling back to clipboard method", e);
-            
-            // Fallback to clipboard + AppleScript method
-            let mut clipboard = Clipboard::new()?;
-            clipboard.set_text(&text)?;
-            
-            // Small delay to ensure clipboard is updated
-            thread::sleep(Duration::from_millis(50));
-            
-            // Simulate Cmd+V to paste at cursor
-            macos::simulate_keystroke("v", &["command down"])?;
-            
-            // Emit event to notify that paste was attempted
-            let _ = app.emit("text_pasted", &text);
-            
-            log::debug!("Pasted text at cursor using fallback: {} chars", text.len());
-            Ok(())
+            log::error!("Failed to paste text: {}", e);
+            // Emit specific event for permission errors
+            if matches!(&e, AppError::Permission(_)) {
+                let _ = app.emit("accessibility_permission_needed", "paste");
+            }
+            Err(e)
         }
     }
 }
 
 #[tauri::command]
-pub fn get_clipboard_text() -> Result<String, AppError> {
-    let mut clipboard = Clipboard::new()?;
-    Ok(clipboard.get_text()?)
+pub fn get_clipboard_text(app: tauri::AppHandle) -> Result<String, AppError> {
+    app.clipboard()
+        .read_text()
+        .map_err(|e| AppError::System(format!("Failed to read clipboard: {}", e)))
 }
 
 #[tauri::command]
-pub fn get_selected_text() -> Result<String, AppError> {
-    // Try native accessibility API first
+pub fn get_selected_text(app: tauri::AppHandle) -> Result<String, AppError> {
+    // Only use accessibility API - no fallback
     match accessibility::get_selected_text() {
         Ok(text) => {
             log::debug!("Got selected text using Accessibility API: {} chars", text.len());
             Ok(text)
         }
         Err(e) => {
-            log::warn!("Accessibility API failed: {}, falling back to clipboard method", e);
-            // Fallback to clipboard method
-            macos::get_selected_text_with_clipboard_restore()
+            log::error!("Failed to get selected text: {}", e);
+            // Emit specific event for permission errors
+            if matches!(&e, AppError::Permission(_)) {
+                let _ = app.emit("accessibility_permission_needed", "selection");
+            }
+            Err(e)
         }
     }
 }

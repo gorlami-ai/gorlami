@@ -34,6 +34,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -47,6 +48,9 @@ pub fn run() {
             commands::audio::get_audio_pcm,
             commands::audio::get_audio_devices,
             commands::audio::select_audio_device,
+            commands::audio::check_microphone_permission,
+            commands::audio::request_microphone_permission,
+            commands::audio::open_microphone_preferences,
             // Shortcut commands
             commands::shortcuts::get_shortcut_config,
             commands::shortcuts::update_shortcut_config,

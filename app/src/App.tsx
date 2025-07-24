@@ -4,6 +4,10 @@ import { AuthProvider } from './contexts/AuthContext';
 import { MainLayout } from './layouts/MainLayout';
 import { UpdateBanner } from './components/UpdateBanner';
 import { useAutoUpdater } from './hooks/useAutoUpdater';
+import { useAudioPermission } from './hooks/useAudioPermission';
+import { useAccessibilityPermission } from './hooks/useAccessibilityPermission';
+import { MicrophonePermissionDialog } from './components/MicrophonePermissionDialog';
+import { AccessibilityPermissionDialog } from './components/AccessibilityPermissionDialog';
 import { Home } from './pages/Home';
 import { Settings } from './pages/Settings';
 import { Activity } from './pages/Activity';
@@ -19,6 +23,16 @@ function App() {
     showNotification, 
     handleLater 
   } = useAutoUpdater();
+  
+  const {
+    showPermissionDialog: showMicrophoneDialog,
+    closePermissionDialog: closeMicrophoneDialog
+  } = useAudioPermission();
+  
+  const {
+    showPermissionDialog: showAccessibilityDialog,
+    closePermissionDialog: closeAccessibilityDialog
+  } = useAccessibilityPermission();
 
   useEffect(() => {
     // Initialize edit mode service
@@ -64,6 +78,24 @@ function App() {
               onDismiss={handleLater}
             />
           )}
+          
+          {/* Microphone Permission Dialog */}
+          <MicrophonePermissionDialog
+            isOpen={showMicrophoneDialog}
+            onClose={closeMicrophoneDialog}
+            onPermissionGranted={() => {
+              console.log('Microphone permission granted');
+            }}
+          />
+          
+          {/* Accessibility Permission Dialog */}
+          <AccessibilityPermissionDialog
+            isOpen={showAccessibilityDialog}
+            onClose={closeAccessibilityDialog}
+            onPermissionGranted={() => {
+              console.log('Accessibility permission granted');
+            }}
+          />
         </div>
       </BrowserRouter>
     </AuthProvider>

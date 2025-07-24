@@ -40,17 +40,8 @@ pub enum AppError {
     #[error("Config error: {0}")]
     Config(#[from] cpal::DefaultStreamConfigError),
     
-    #[error("Clipboard backend error: {0}")]
-    Arboard(String),
-    
     #[error("Permission error: {0}")]
     Permission(String),
-}
-
-impl From<arboard::Error> for AppError {
-    fn from(err: arboard::Error) -> Self {
-        AppError::Arboard(err.to_string())
-    }
 }
 
 
@@ -83,7 +74,6 @@ impl AppError {
             AppError::Device(_) => "audio_device",
             AppError::Stream(_) => "audio_stream",
             AppError::Config(_) => "audio_config",
-            AppError::Arboard(_) => "clipboard_backend",
             AppError::Permission(_) => "permission",
         }
     }
