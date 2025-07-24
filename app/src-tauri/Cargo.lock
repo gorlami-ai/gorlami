@@ -1688,6 +1688,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arboard",
+ "core-foundation",
+ "core-foundation-sys",
+ "core-graphics",
  "cpal",
  "dirs 5.0.1",
  "env_logger",

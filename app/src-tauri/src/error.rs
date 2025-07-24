@@ -43,6 +43,8 @@ pub enum AppError {
     #[error("Clipboard backend error: {0}")]
     Arboard(String),
     
+    #[error("Permission error: {0}")]
+    Permission(String),
 }
 
 impl From<arboard::Error> for AppError {
@@ -82,6 +84,7 @@ impl AppError {
             AppError::Stream(_) => "audio_stream",
             AppError::Config(_) => "audio_config",
             AppError::Arboard(_) => "clipboard_backend",
+            AppError::Permission(_) => "permission",
         }
     }
 }

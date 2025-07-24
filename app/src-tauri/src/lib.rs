@@ -65,6 +65,9 @@ pub fn run() {
             commands::clipboard::paste_at_cursor,
             commands::clipboard::get_clipboard_text,
             commands::clipboard::get_selected_text,
+            commands::clipboard::check_accessibility_permission,
+            commands::clipboard::request_accessibility_permission,
+            commands::clipboard::open_accessibility_preferences,
             // Error logging commands
             services::error_handler::get_error_logs,
             services::error_handler::clear_error_logs,

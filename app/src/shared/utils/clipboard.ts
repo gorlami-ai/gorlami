@@ -80,3 +80,18 @@ export async function getClipboardText(): Promise<string | null> {
     return null;
   }
 }
+
+export async function getSelectedText(): Promise<string | null> {
+  try {
+    const text = await invoke<string>('get_selected_text');
+    logger.debug('Got selected text', { textLength: text.length });
+    return text;
+  } catch (error) {
+    await handleError(error, {
+      context: 'Clipboard',
+      fallbackMessage: 'Failed to get selected text',
+      showToast: false
+    });
+    return null;
+  }
+}
