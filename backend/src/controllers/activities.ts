@@ -230,3 +230,90 @@ export async function getActivity(req: AuthenticatedRequest, res: Response): Pro
     throw error instanceof AppError ? error : new AppError('Failed to get activity', 500);
   }
 }
+
+export async function deleteActivity(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { activityId } = req.params;
+    const userId = req.userId;
+
+    req.logger.info({ activityId, userId }, 'Starting activity deletion');
+
+    // First, find the activity and verify ownership
+    const activity = await prisma.activity.findFirst({
+      where: {
+        id: activityId,
+        userId,
+      },
+      include: {
+        file: true,
+      },
+    });
+
+    if (!activity) {
+      req.logger.warn({ activityId, userId }, 'Activity not found or unauthorized');
+      throw new AppError('Activity not found', 404);
+    }
+
+    req.logger.info(
+      { 
+        activityId, 
+        hasFile: !!activity.file,
+        fileId: activity.fileId,
+        activityType: activity.type 
+      }, 
+      'Activity found, proceeding with deletion'
+    );
+
+    // Delete from database first (with transaction for file and activity records)
+    await prisma.$transaction(async (tx) => {
+      // Delete the file record if exists
+      if (activity.fileId) {
+        await tx.file.delete({
+          where: { id: activity.fileId },
+        });
+        req.logger.info({ fileId: activity.fileId }, 'File record deleted from database');
+      }
+
+      // Delete the activity
+      await tx.activity.delete({
+        where: { id: activityId },
+      });
+    });
+
+    req.logger.info({ activityId }, 'Database records deleted successfully');
+
+    // After successful database deletion, attempt to delete from storage
+    // This is done outside the transaction to avoid timeout issues
+    if (activity.file) {
+      req.logger.info(
+        { 
+          fileId: activity.file.id, 
+          storagePath: activity.file.storagePath,
+          fileSize: activity.file.sizeBytes 
+        }, 
+        'Attempting to delete file from storage'
+      );
+      
+      const { error: deleteError } = await storageService.deleteFile(activity.file.storagePath);
+      if (deleteError) {
+        req.logger.error(
+          { 
+            error: deleteError, 
+            storagePath: activity.file.storagePath,
+            fileId: activity.file.id 
+          }, 
+          'Failed to delete file from storage (database records already deleted)'
+        );
+        // Don't throw here - the database records are already deleted
+      } else {
+        req.logger.info({ storagePath: activity.file.storagePath }, 'File deleted from storage successfully');
+      }
+    }
+
+    req.logger.info({ activityId, hadFile: !!activity.file }, 'Activity deletion completed');
+    res.status(204).send();
+  } catch (error) {
+    req.logger.error({ error, activityId: req.params.activityId }, 'Error deleting activity');
+    throw error instanceof AppError ? error : new AppError('Failed to delete activity', 500);
+  }
+}

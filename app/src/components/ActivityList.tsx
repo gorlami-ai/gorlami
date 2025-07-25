@@ -87,9 +87,9 @@ export function ActivityList() {
       // Optimistically remove from UI
       setActivities(activities.filter(a => a.id !== id));
       
-      // Note: Backend delete endpoint implementation pending
-      // When available, add: await backendService.deleteActivity(id);
-      logger.info(`Activity ${id} removed from local state (backend delete pending)`);
+      // Delete from backend
+      await backendService.deleteActivity(id);
+      logger.info(`Activity ${id} deleted successfully`);
     } catch (error) {
       logger.error('Failed to delete activity', error);
       // Refresh to restore the deleted item if API fails
@@ -97,9 +97,6 @@ export function ActivityList() {
     }
   };
 
-  const handleRerun = (id: string) => {
-    console.log('Rerun:', id);
-  };
 
   const stats = {
     total: activities.length,
@@ -159,7 +156,6 @@ export function ActivityList() {
                 onPlay={activity.type === 'transcription' ? () => handlePlay(activity.id) : undefined}
                 onCopy={() => handleCopy(activity.id)}
                 onDelete={() => handleDelete(activity.id)}
-                onRerun={() => handleRerun(activity.id)}
               />
             ))}
             

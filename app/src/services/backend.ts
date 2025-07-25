@@ -95,4 +95,10 @@ export const backendService = {
     
     return response.blob();
   },
+
+  async deleteActivity(activityId: string): Promise<void> {
+    await apiClient(`/api/activities/${activityId}`, {
+      method: 'DELETE',
+    });
+  },
 };

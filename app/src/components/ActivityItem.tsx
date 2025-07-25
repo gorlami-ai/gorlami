@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Copy, Trash2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Copy, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ActivityItemProps {
   id: string;
@@ -10,7 +10,6 @@ interface ActivityItemProps {
   onPlay?: () => void;
   onCopy?: () => void;
   onDelete?: () => void;
-  onRerun?: () => void;
 }
 
 export function ActivityItem({
@@ -21,27 +20,30 @@ export function ActivityItem({
   onPlay,
   onCopy,
   onDelete,
-  onRerun,
 }: ActivityItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isLongText = content.length > 200;
   const formatDate = (date: Date) => {
     const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
     
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
-    }
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    // Format date part
+    const dateOptions: Intl.DateTimeFormatOptions = {
+      month: 'short',
       day: 'numeric',
       year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-    });
+    };
+    
+    // Format time part
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    };
+    
+    const dateStr = date.toLocaleDateString('en-US', dateOptions);
+    const timeStr = date.toLocaleTimeString('en-US', timeOptions);
+    
+    return `${dateStr} ${timeStr}`;
   };
 
   return (
@@ -85,13 +87,6 @@ export function ActivityItem({
               <Play className="w-4 h-4 text-primary-600" />
             </button>
           )}
-          <button
-            onClick={onRerun}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-            title="Reprocess"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
           <button
             onClick={onCopy}
             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
