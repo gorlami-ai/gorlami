@@ -31,6 +31,7 @@ export interface Activity {
   inputText: string;
   outputText: string;
   fileId?: string;
+  providerResponse?: any;
   createdAt: string;
   updatedAt: string;
 }
@@ -88,12 +89,16 @@ export const backendService = {
     return apiClient<Activity>(`/api/activities/${id}`);
   },
 
-  async downloadFile(fileId: string): Promise<Blob> {
-    const response = await apiClient<Response>(`/api/files/${fileId}`, {
+  async getFileSignedUrl(fileId: string): Promise<{
+    url: string;
+    expiresIn: number;
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+  }> {
+    return apiClient(`/api/files/${fileId}/signed-url`, {
       method: 'GET',
     });
-    
-    return response.blob();
   },
 
   async deleteActivity(activityId: string): Promise<void> {

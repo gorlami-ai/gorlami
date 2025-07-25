@@ -43,6 +43,6 @@ router.get('/api/activities/:activityId', asyncHandler(activitiesController.getA
 router.delete('/api/activities/:activityId', asyncHandler(activitiesController.deleteActivity));
 
 // Files routes
-router.get('/api/files/:fileId', asyncHandler(filesController.downloadFile));
+router.get('/api/files/:fileId/signed-url', asyncHandler(filesController.getSignedUrl));
 
 export default router;

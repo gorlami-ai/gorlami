@@ -119,10 +119,13 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
       'Starting Deepgram transcription'
     );
 
-    let transcript: string;
+    let deepgramResponse;
     try {
-      transcript = await deepgramService.transcribeAudio(file.buffer, mimetype, language, model);
-      req.logger.info({ transcriptLength: transcript?.length }, 'Deepgram transcription completed');
+      deepgramResponse = await deepgramService.transcribeAudio(file.buffer, mimetype, language, model);
+      req.logger.info({ 
+        transcriptLength: deepgramResponse.transcript?.length,
+        duration: deepgramResponse.duration 
+      }, 'Deepgram transcription completed');
     } catch (deepgramError) {
       const errorMessage = deepgramError instanceof Error ? deepgramError.message : 'Unknown error';
       req.logger.error(
@@ -136,9 +139,14 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
       throw new AppError('Failed to transcribe audio', 500);
     }
 
+    const transcript = deepgramResponse.transcript;
     const outputText = transcript;
     const providerResponse: ProviderResponse = {
-      deepgram: { transcript },
+      deepgram: {
+        transcript,
+        duration: deepgramResponse.duration,
+        confidence: deepgramResponse.confidence,
+      },
     };
 
     const activity = await prisma.activity.create({

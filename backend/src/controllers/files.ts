@@ -5,13 +5,15 @@ import type { AuthenticatedRequest } from '../types/index.js';
 import { AppError } from '../middleware/error.js';
 import logger from '../utils/logger.js';
 
-export async function downloadFile(
+export async function getSignedUrl(
   req: AuthenticatedRequest,
   res: Response
 ): Promise<void> {
   try {
     const { fileId } = req.params;
     const userId = req.userId;
+
+    logger.info({ fileId, userId }, 'Generating signed URL for file');
 
     const file = await prisma.file.findFirst({
       where: {
@@ -21,26 +23,29 @@ export async function downloadFile(
     });
 
     if (!file) {
+      logger.warn({ fileId, userId }, 'File not found or unauthorized');
       throw new AppError('File not found', 404);
     }
 
-    const { data, error } = await storageService.downloadFile(file.storagePath);
+    const expiresIn = 3600; // 1 hour
+    const { url, error } = await storageService.createSignedUrl(file.storagePath, expiresIn);
 
-    if (error || !data) {
-      throw new AppError('Failed to download file', 500);
+    if (error || !url) {
+      logger.error({ error, fileId, storagePath: file.storagePath }, 'Failed to create signed URL');
+      throw new AppError('Failed to generate download URL', 500);
     }
 
-    const buffer = Buffer.from(await data.arrayBuffer());
+    logger.info({ fileId, expiresIn }, 'Signed URL generated successfully');
 
-    res.set({
-      'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${file.filename}"`,
-      'Content-Length': buffer.length.toString(),
+    res.json({
+      url,
+      expiresIn,
+      filename: file.filename,
+      mimeType: 'audio/raw;encoding=signed-integer;bits=16;rate=48000;endian=little', // All our audio files are PCM
+      sizeBytes: file.sizeBytes,
     });
-
-    res.send(buffer);
   } catch (error) {
-    logger.error(error, 'Error downloading file');
-    throw error instanceof AppError ? error : new AppError('Failed to download file', 500);
+    logger.error(error, 'Error generating signed URL');
+    throw error instanceof AppError ? error : new AppError('Failed to generate signed URL', 500);
   }
 }

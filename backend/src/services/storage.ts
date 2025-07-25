@@ -98,15 +98,6 @@ export class StorageService {
     }
   }
 
-  async downloadFile(path: string): Promise<{ data: Blob | null; error?: Error }> {
-    const { data, error } = await this.supabase.storage.from(this.bucketName).download(path);
-
-    if (error) {
-      return { data: null, error: new Error(error.message) };
-    }
-
-    return { data };
-  }
 
   async deleteFile(path: string): Promise<{ error?: Error }> {
     const { error } = await this.supabase.storage.from(this.bucketName).remove([path]);
@@ -116,6 +107,46 @@ export class StorageService {
     }
 
     return {};
+  }
+
+  async createSignedUrl(
+    path: string,
+    expiresIn: number = 3600
+  ): Promise<{ url: string; error?: Error }> {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from(this.bucketName)
+        .createSignedUrl(path, expiresIn);
+
+      if (error) {
+        logger.error(
+          {
+            error: error.message,
+            path,
+            bucketName: this.bucketName,
+          },
+          'Failed to create signed URL'
+        );
+        return { url: '', error: new Error(error.message) };
+      }
+
+      logger.debug(
+        {
+          path,
+          expiresIn,
+          urlLength: data.signedUrl.length,
+        },
+        'Created signed URL successfully'
+      );
+
+      return { url: data.signedUrl };
+    } catch (err) {
+      logger.error(
+        { error: err, path, bucketName: this.bucketName },
+        'Unexpected error creating signed URL'
+      );
+      return { url: '', error: err instanceof Error ? err : new Error('Unknown error') };
+    }
   }
 
   getPublicUrl(path: string): string {

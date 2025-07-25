@@ -16,7 +16,11 @@ export class DeepgramService {
     mimetype: string,
     language: string = this.defaultLanguage,
     model: string = this.defaultModel
-  ): Promise<string> {
+  ): Promise<{
+    transcript: string;
+    duration?: number;
+    confidence?: number;
+  }> {
     try {
       // Parse raw PCM parameters from custom mimetype
       const baseOptions = {
@@ -61,9 +65,16 @@ export class DeepgramService {
         throw new Error('No transcription result from Deepgram');
       }
 
-      const transcript = response.result.results.channels[0].alternatives[0].transcript || '';
+      const alternative = response.result.results.channels[0].alternatives[0];
+      const transcript = alternative.transcript || '';
+      const confidence = alternative.confidence;
+      const duration = response.result.metadata?.duration;
       
-      return transcript;
+      return {
+        transcript,
+        duration,
+        confidence,
+      };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error({ error: errorMessage }, 'Deepgram transcription error');
