@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { emit } from '@tauri-apps/api/event';
+import { emit, listen } from '@tauri-apps/api/event';
 import { backendService } from '../../services/backend';
 import { createLogger } from '../../utils/logger';
 import { handleError, withErrorHandling } from '../../shared/utils/errorHandler';
@@ -21,6 +21,17 @@ export interface TranscriptionResult {
 class RecordingService {
   private handlers: RecordingHandlers = {};
   private isProcessing = false;
+
+  constructor() {
+    this.setupEventListener();
+  }
+
+  private async setupEventListener() {
+    // Listen for recording stopped event and process the recording
+    await listen('recording_stopped', async () => {
+      await this.processRecording();
+    });
+  }
 
   async processRecording(): Promise<TranscriptionResult | null> {
     if (this.isProcessing) {
