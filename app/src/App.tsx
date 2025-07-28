@@ -16,6 +16,8 @@ import { AuthCallback } from './pages/AuthCallback';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { authService } from './services/auth';
 import { editModeService } from './services/editMode';
+// Import for side effects - initializes global event listeners for recording
+import './features/recording/recordingService';
 
 function App() {
   const { updateInfo, showNotification, handleLater } = useAutoUpdater();

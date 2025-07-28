@@ -10,7 +10,18 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [],
+    "windows": [
+      {
+        "label": "main",
+        "title": "Gorlami",
+        "width": 1200,
+        "height": 800,
+        "visible": false,
+        "center": true,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
     "macOSPrivateApi": true,
     "security": {
       "csp": null
