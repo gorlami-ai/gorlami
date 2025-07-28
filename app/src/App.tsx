@@ -18,20 +18,16 @@ import { authService } from './services/auth';
 import { editModeService } from './services/editMode';
 
 function App() {
-  const { 
-    updateInfo, 
-    showNotification, 
-    handleLater 
-  } = useAutoUpdater();
-  
+  const { updateInfo, showNotification, handleLater } = useAutoUpdater();
+
   const {
     showPermissionDialog: showMicrophoneDialog,
-    closePermissionDialog: closeMicrophoneDialog
+    closePermissionDialog: closeMicrophoneDialog,
   } = useAudioPermission();
-  
+
   const {
     showPermissionDialog: showAccessibilityDialog,
-    closePermissionDialog: closeAccessibilityDialog
+    closePermissionDialog: closeAccessibilityDialog,
   } = useAccessibilityPermission();
 
   useEffect(() => {
@@ -52,8 +48,8 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route 
-              path="/" 
+            <Route
+              path="/"
               element={
                 authService.isAuthEnabled() ? (
                   <ProtectedRoute>
@@ -70,15 +66,12 @@ function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-          
+
           {/* Update Banner - subtle notification */}
           {showNotification && updateInfo && (
-            <UpdateBanner
-              updateInfo={updateInfo}
-              onDismiss={handleLater}
-            />
+            <UpdateBanner updateInfo={updateInfo} onDismiss={handleLater} />
           )}
-          
+
           {/* Microphone Permission Dialog */}
           <MicrophonePermissionDialog
             isOpen={showMicrophoneDialog}
@@ -87,7 +80,7 @@ function App() {
               console.log('Microphone permission granted');
             }}
           />
-          
+
           {/* Accessibility Permission Dialog */}
           <AccessibilityPermissionDialog
             isOpen={showAccessibilityDialog}

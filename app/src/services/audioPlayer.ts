@@ -1,4 +1,3 @@
-import { pcmToWav } from '../utils/audio';
 import { logger } from '../utils/logger';
 
 interface CachedAudio {
@@ -57,11 +56,10 @@ class AudioPlayerService {
   /**
    * Play audio from a URL
    * @param url The URL to fetch audio from
-   * @param sampleRate The sample rate of the PCM audio
    * @param id Optional ID to track which audio is playing
    * @param onEnded Optional callback when audio ends naturally
    */
-  async play(url: string, sampleRate: number = 48000, id?: string, onEnded?: () => void): Promise<void> {
+  async play(url: string, id?: string, onEnded?: () => void): Promise<void> {
     try {
       // If same audio is playing, toggle pause/play
       if (id && id === this.currentId && this.currentAudio && !this.currentAudio.paused) {
@@ -106,22 +104,20 @@ class AudioPlayerService {
       this.isLoading = true;
       this.currentId = id || null;
       
-      logger.info('Fetching audio from URL', { url, sampleRate, id });
+      logger.info('Fetching audio from URL', { url, id });
       
-      // Fetch the PCM audio data
+      // Fetch the Opus audio data
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`);
       }
       
-      const pcmData = await response.arrayBuffer();
-      logger.info('Audio data fetched', { size: pcmData.byteLength });
+      const opusData = await response.arrayBuffer();
+      logger.info('Audio data fetched', { size: opusData.byteLength });
       
-      // Convert PCM to WAV
-      const wavBlob = pcmToWav(pcmData, sampleRate);
-      
-      // Create blob URL
-      const blobUrl = URL.createObjectURL(wavBlob);
+      // Create blob URL for Opus data
+      const opusBlob = new Blob([opusData], { type: 'audio/opus' });
+      const blobUrl = URL.createObjectURL(opusBlob);
       
       // Create audio element
       const audio = new Audio(blobUrl);

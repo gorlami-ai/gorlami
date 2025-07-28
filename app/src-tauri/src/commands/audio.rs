@@ -19,8 +19,8 @@ pub fn is_recording(state: tauri::State<Arc<AudioRecorder>>) -> bool {
 }
 
 #[tauri::command]
-pub fn get_audio_pcm(state: tauri::State<Arc<AudioRecorder>>) -> Result<(Vec<u8>, u32), AppError> {
-    state.inner().get_audio_pcm()
+pub fn get_audio_opus(state: tauri::State<Arc<AudioRecorder>>) -> Result<Vec<u8>, AppError> {
+    state.inner().get_audio_opus()
 }
 
 #[tauri::command]

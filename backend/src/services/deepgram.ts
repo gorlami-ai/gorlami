@@ -22,43 +22,27 @@ export class DeepgramService {
     confidence?: number;
   }> {
     try {
-      // Parse raw PCM parameters from custom mimetype
-      const baseOptions = {
+      // Setup options for Deepgram
+      const options = {
         model,
         language,
         punctuate: true,
         smart_format: true,
+        mimetype,
       };
 
-      // Check if this is raw PCM audio
-      let options: any;
-      
-      if (mimetype.startsWith('audio/raw')) {
-        // Extract sample rate from mimetype like "audio/raw;encoding=signed-integer;bits=16;rate=48000;endian=little"
-        const rateMatch = mimetype.match(/rate=(\d+)/);
-        const sampleRate = rateMatch ? parseInt(rateMatch[1]) : 16000;
-        
-        // For raw PCM, we MUST NOT include mimetype property
-        options = {
-          model,
-          language,
-          punctuate: true,
-          smart_format: true,
-          encoding: 'linear16', // 16-bit signed PCM
-          sample_rate: sampleRate,
-          channels: 1, // Mono
-        };
-      } else {
-        // For other formats, use mimetype
-        options = {
-          ...baseOptions,
-          mimetype,
-        };
-      }
-      
-      const response = await this.client.listen.prerecorded.transcribeFile(
-        audioBuffer,
-        options
+      const startTime = Date.now();
+
+      const response = await this.client.listen.prerecorded.transcribeFile(audioBuffer, options);
+
+      const apiTime = Date.now() - startTime;
+      logger.info(
+        {
+          apiResponseTime: apiTime,
+          audioSize: audioBuffer.length,
+          audioDuration: response.result?.metadata?.duration,
+        },
+        'Deepgram API response time'
       );
 
       if (!response.result?.results?.channels[0]?.alternatives[0]) {
@@ -69,7 +53,7 @@ export class DeepgramService {
       const transcript = alternative.transcript || '';
       const confidence = alternative.confidence;
       const duration = response.result.metadata?.duration;
-      
+
       return {
         transcript,
         duration,

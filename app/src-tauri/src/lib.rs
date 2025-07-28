@@ -45,7 +45,7 @@ pub fn run() {
             commands::audio::start_recording,
             commands::audio::stop_recording,
             commands::audio::is_recording,
-            commands::audio::get_audio_pcm,
+            commands::audio::get_audio_opus,
             commands::audio::get_audio_devices,
             commands::audio::select_audio_device,
             commands::audio::check_microphone_permission,

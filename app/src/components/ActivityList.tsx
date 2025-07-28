@@ -4,9 +4,8 @@ import { Search } from 'lucide-react';
 import { backendService } from '../services/backend';
 import { logger } from '../utils/logger';
 import { invoke } from '@tauri-apps/api/core';
-import { recordingService } from '../services/recording';
+import { recordingService } from '../features/recording/recordingService';
 import { audioPlayer } from '../services/audioPlayer';
-import { extractSampleRate } from '../utils/audio';
 
 /**
  * Format duration from seconds to MM:SS format
@@ -107,9 +106,8 @@ export function ActivityList() {
 
       // Check if we already have the audio loaded
       if (audioPlayer.isAudioLoaded(id)) {
-        // Extract sample rate and play cached audio
-        const sampleRate = extractSampleRate(activity.providerResponse);
-        await audioPlayer.play('', sampleRate, id, () => {
+        // Play cached audio
+        await audioPlayer.play('', id, () => {
           // Audio ended naturally, reset the playing state
           setPlayingId(null);
           logger.info('Audio ended naturally', { activityId: id });
@@ -131,18 +129,15 @@ export function ActivityList() {
         audioPlayer.cacheUrl(id, url, signedUrlData.expiresIn);
       }
       
-      // Extract sample rate from provider response
-      const sampleRate = extractSampleRate(activity.providerResponse);
-      
       // Play audio (will be fetched and cached)
-      await audioPlayer.play(url, sampleRate, id, () => {
+      await audioPlayer.play(url, id, () => {
         // Audio ended naturally, reset the playing state
         setPlayingId(null);
         logger.info('Audio ended naturally', { activityId: id });
       });
       setPlayingId(id);
       
-      logger.info('Audio playback started', { activityId: id, sampleRate, fromCache: audioPlayer.isAudioLoaded(id) });
+      logger.info('Audio playback started', { activityId: id, fromCache: audioPlayer.isAudioLoaded(id) });
     } catch (error) {
       logger.error('Failed to play audio', error);
       setPlayingId(null);

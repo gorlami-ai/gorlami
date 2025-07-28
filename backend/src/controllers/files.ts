@@ -5,10 +5,7 @@ import type { AuthenticatedRequest } from '../types/index.js';
 import { AppError } from '../middleware/error.js';
 import logger from '../utils/logger.js';
 
-export async function getSignedUrl(
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> {
+export async function getSignedUrl(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { fileId } = req.params;
     const userId = req.userId;
@@ -41,7 +38,7 @@ export async function getSignedUrl(
       url,
       expiresIn,
       filename: file.filename,
-      mimeType: 'audio/raw;encoding=signed-integer;bits=16;rate=48000;endian=little', // All our audio files are PCM
+      mimeType: 'audio/opus', // All our audio files are Opus
       sizeBytes: file.sizeBytes,
     });
   } catch (error) {

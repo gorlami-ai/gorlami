@@ -75,63 +75,28 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
 
     const { language, model, enhance } = req.body;
     const userId = req.userId;
-    const fileId = uuidv4();
 
-    // Check if it's raw PCM audio
+    // Determine the mimetype for Deepgram
     let mimetype = file.mimetype;
-    if (mimetype === 'audio/pcm' && req.headers['x-sample-rate']) {
-      // For raw PCM, we need to specify the encoding parameters
-      const sampleRate = req.headers['x-sample-rate'];
-      mimetype = `audio/raw;encoding=signed-integer;bits=16;rate=${sampleRate};endian=little`;
+    if (file.mimetype === 'audio/ogg') {
+      // Deepgram expects 'audio/ogg;codecs=opus' for Ogg Opus files
+      mimetype = 'audio/ogg;codecs=opus';
     }
-
-    const storagePath = `${userId}/${fileId}/${file.originalname}`;
-    req.logger.info(
-      { storagePath, bufferSize: file.buffer.length, mimetype },
-      'Attempting to upload file to storage'
-    );
-
-    const { error: uploadError } = await storageService.uploadFile(
-      storagePath,
-      file.buffer,
-      mimetype
-    );
-
-    if (uploadError) {
-      req.logger.error({ uploadError, storagePath }, 'Storage upload failed');
-      throw new AppError('Failed to upload file', 500);
-    }
-
-    req.logger.info({ storagePath }, 'File uploaded successfully');
-
-    const fileRecord = await prisma.file.create({
-      data: {
-        id: fileId,
-        userId,
-        filename: file.originalname,
-        storagePath,
-        sizeBytes: file.size,
-      },
-    });
-
-    req.logger.info(
-      { mimetype, sampleRate: req.headers['x-sample-rate'] },
-      'Starting Deepgram transcription'
-    );
 
     let deepgramResponse;
     try {
-      deepgramResponse = await deepgramService.transcribeAudio(file.buffer, mimetype, language, model);
-      req.logger.info({ 
-        transcriptLength: deepgramResponse.transcript?.length,
-        duration: deepgramResponse.duration 
-      }, 'Deepgram transcription completed');
+      deepgramResponse = await deepgramService.transcribeAudio(
+        file.buffer,
+        mimetype,
+        language,
+        model
+      );
     } catch (deepgramError) {
       const errorMessage = deepgramError instanceof Error ? deepgramError.message : 'Unknown error';
       req.logger.error(
         {
           error: errorMessage,
-          mimetype,
+          mimetype: file.mimetype,
           bufferSize: file.buffer.length,
         },
         'Deepgram transcription failed'
@@ -140,7 +105,21 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
     }
 
     const transcript = deepgramResponse.transcript;
-    const outputText = transcript;
+    let outputText = transcript;
+    let enhancedText: string | undefined;
+
+    // Enhance transcription if requested
+    if (enhance && transcript.trim()) {
+      try {
+        const enhancementResult = await openaiService.enhanceTranscription(transcript);
+        enhancedText = enhancementResult.content;
+        outputText = enhancedText; // Store enhanced version as output
+      } catch (enhanceError) {
+        req.logger.warn({ error: enhanceError }, 'Enhancement failed, using raw transcription');
+        // Continue with raw transcription if enhancement fails
+      }
+    }
+
     const providerResponse: ProviderResponse = {
       deepgram: {
         transcript,
@@ -154,7 +133,7 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
         id: uuidv4(),
         userId,
         type: ActivityType.TRANSCRIPTION,
-        fileId: fileRecord.id,
+        fileId: null,
         inputText: transcript,
         outputText,
         providerResponse: providerResponse as any,
@@ -164,8 +143,8 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
     // Return transcription-specific response format
     const response = {
       activityId: activity.id,
-      transcription: activity.outputText,
-      enhanced: enhance && outputText !== transcript ? outputText : undefined,
+      transcription: transcript,
+      enhanced: enhancedText,
     };
 
     req.logger.info({ activityId: response.activityId }, 'Transcription completed successfully');
@@ -239,6 +218,87 @@ export async function getActivity(req: AuthenticatedRequest, res: Response): Pro
   }
 }
 
+export async function uploadActivityAudio(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { activityId } = req.params;
+    const userId = req.userId;
+    const file = req.file;
+
+    if (!file) {
+      throw new AppError('No audio file provided', 400);
+    }
+
+    if (!['audio/opus', 'audio/ogg'].includes(file.mimetype)) {
+      throw new AppError('Invalid audio format. Only Opus/Ogg format is supported.', 400);
+    }
+
+    req.logger.info(
+      {
+        activityId,
+        filename: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+      },
+      'Uploading audio for existing activity'
+    );
+
+    // Find the activity and verify ownership
+    const activity = await prisma.activity.findFirst({
+      where: {
+        id: activityId,
+        userId,
+      },
+    });
+
+    if (!activity) {
+      throw new AppError('Activity not found', 404);
+    }
+
+    if (activity.fileId) {
+      throw new AppError('Activity already has an audio file', 400);
+    }
+
+    // Upload the file
+    const fileId = uuidv4();
+    const storagePath = `${userId}/${fileId}/${file.originalname}`;
+
+    const { error: uploadError } = await storageService.uploadFile(
+      storagePath,
+      file.buffer,
+      file.mimetype
+    );
+
+    if (uploadError) {
+      req.logger.error({ uploadError, storagePath }, 'Storage upload failed');
+      throw new AppError('Failed to upload file', 500);
+    }
+
+    // Create file record and update activity
+    await prisma.$transaction(async (tx) => {
+      const fileRecord = await tx.file.create({
+        data: {
+          id: fileId,
+          userId,
+          filename: file.originalname,
+          storagePath,
+          sizeBytes: file.size,
+        },
+      });
+
+      await tx.activity.update({
+        where: { id: activityId },
+        data: { fileId: fileRecord.id },
+      });
+    });
+
+    req.logger.info({ activityId, fileId }, 'Audio uploaded successfully');
+    res.status(204).send();
+  } catch (error) {
+    req.logger.error(error, 'Error uploading activity audio');
+    throw error instanceof AppError ? error : new AppError('Failed to upload audio', 500);
+  }
+}
+
 export async function deleteActivity(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { activityId } = req.params;
@@ -263,12 +323,12 @@ export async function deleteActivity(req: AuthenticatedRequest, res: Response): 
     }
 
     req.logger.info(
-      { 
-        activityId, 
+      {
+        activityId,
         hasFile: !!activity.file,
         fileId: activity.fileId,
-        activityType: activity.type 
-      }, 
+        activityType: activity.type,
+      },
       'Activity found, proceeding with deletion'
     );
 
@@ -294,27 +354,30 @@ export async function deleteActivity(req: AuthenticatedRequest, res: Response): 
     // This is done outside the transaction to avoid timeout issues
     if (activity.file) {
       req.logger.info(
-        { 
-          fileId: activity.file.id, 
+        {
+          fileId: activity.file.id,
           storagePath: activity.file.storagePath,
-          fileSize: activity.file.sizeBytes 
-        }, 
+          fileSize: activity.file.sizeBytes,
+        },
         'Attempting to delete file from storage'
       );
-      
+
       const { error: deleteError } = await storageService.deleteFile(activity.file.storagePath);
       if (deleteError) {
         req.logger.error(
-          { 
-            error: deleteError, 
+          {
+            error: deleteError,
             storagePath: activity.file.storagePath,
-            fileId: activity.file.id 
-          }, 
+            fileId: activity.file.id,
+          },
           'Failed to delete file from storage (database records already deleted)'
         );
         // Don't throw here - the database records are already deleted
       } else {
-        req.logger.info({ storagePath: activity.file.storagePath }, 'File deleted from storage successfully');
+        req.logger.info(
+          { storagePath: activity.file.storagePath },
+          'File deleted from storage successfully'
+        );
       }
     }
 

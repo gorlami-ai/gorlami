@@ -45,27 +45,33 @@ export interface ActivitiesResponse {
 
 export const backendService = {
   async transcribeAudio(
-    pcmBuffer: ArrayBuffer,
-    sampleRate: number = 16000,
+    audioBuffer: ArrayBuffer,
     options: TranscriptionOptions = {}
   ): Promise<TranscriptionResponse> {
     const formData = new FormData();
-    
-    // Create a blob from the PCM buffer with the correct MIME type
-    const blob = new Blob([pcmBuffer], { type: 'audio/pcm' });
-    formData.append('audio', blob, 'audio.pcm');
-    
+
+    // Send as Ogg Opus
+    const blob = new Blob([audioBuffer], { type: 'audio/ogg' });
+    formData.append('audio', blob, 'audio.ogg');
+
     if (options.language) formData.append('language', options.language);
     if (options.model) formData.append('model', options.model);
     if (options.enhance !== undefined) formData.append('enhance', options.enhance.toString());
-    
-    // Add sample rate as a custom header
+
     return apiClient<TranscriptionResponse>('/api/transcribe', {
       method: 'POST',
       body: formData,
-      headers: {
-        'X-Sample-Rate': sampleRate.toString(),
-      },
+    });
+  },
+
+  async uploadActivityAudio(activityId: string, opusBuffer: ArrayBuffer): Promise<void> {
+    const formData = new FormData();
+    const blob = new Blob([opusBuffer], { type: 'audio/ogg' });
+    formData.append('audio', blob, 'audio.ogg');
+
+    await apiClient(`/api/activities/${activityId}/audio`, {
+      method: 'POST',
+      body: formData,
     });
   },
 
@@ -81,7 +87,7 @@ export const backendService = {
       page: page.toString(),
       limit: limit.toString(),
     });
-    
+
     return apiClient<ActivitiesResponse>(`/api/activities?${params}`);
   },
 
