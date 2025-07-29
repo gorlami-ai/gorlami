@@ -78,9 +78,10 @@ export async function transcribeAudio(req: AuthenticatedRequest, res: Response):
 
     // Determine the mimetype for Deepgram
     let mimetype = file.mimetype;
-    if (file.mimetype === 'audio/ogg') {
-      // Deepgram expects 'audio/ogg;codecs=opus' for Ogg Opus files
-      mimetype = 'audio/ogg;codecs=opus';
+    if (file.mimetype === 'audio/pcm' && req.headers['x-sample-rate']) {
+      // For raw PCM, we need to specify the encoding parameters
+      const sampleRate = req.headers['x-sample-rate'];
+      mimetype = `audio/raw;encoding=signed-integer;bits=16;rate=${sampleRate};endian=little`;
     }
 
     let deepgramResponse;

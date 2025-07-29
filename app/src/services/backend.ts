@@ -61,6 +61,7 @@ export const backendService = {
     return apiClient<TranscriptionResponse>('/api/transcribe', {
       method: 'POST',
       body: formData,
+      headers: {},
     });
   },
 
