@@ -55,6 +55,13 @@ export interface ActivityListResponse {
 export interface ProviderResponse {
   deepgram?: {
     transcript: string;
+    duration?: number; // Duration in seconds
+    confidence?: number;
+    words?: Array<{
+      word: string;
+      start: number;
+      end: number;
+    }>;
   };
   openai?: {
     totalTokens: number | null | undefined;

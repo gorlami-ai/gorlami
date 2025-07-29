@@ -5,12 +5,9 @@ import { handleError } from './errorHandler';
 
 const logger = createLogger('Clipboard');
 
-const PASTE_DELAY = 100; // milliseconds
-
 export interface ClipboardOptions {
   paste?: boolean;
   emitEvent?: boolean;
-  delay?: number;
 }
 
 export async function copyToClipboard(
@@ -19,8 +16,7 @@ export async function copyToClipboard(
 ): Promise<boolean> {
   const { 
     paste = false, 
-    emitEvent = false,
-    delay = PASTE_DELAY 
+    emitEvent = false
   } = options;
 
   try {
@@ -28,7 +24,6 @@ export async function copyToClipboard(
     logger.debug('Copied to clipboard', { textLength: text.length });
 
     if (paste) {
-      await new Promise(resolve => setTimeout(resolve, delay));
       await pasteAtCursor(text);
     }
 
@@ -75,6 +70,21 @@ export async function getClipboardText(): Promise<string | null> {
     await handleError(error, {
       context: 'Clipboard',
       fallbackMessage: 'Failed to read from clipboard',
+      showToast: false
+    });
+    return null;
+  }
+}
+
+export async function getSelectedText(): Promise<string | null> {
+  try {
+    const text = await invoke<string>('get_selected_text');
+    logger.debug('Got selected text', { textLength: text.length });
+    return text;
+  } catch (error) {
+    await handleError(error, {
+      context: 'Clipboard',
+      fallbackMessage: 'Failed to get selected text',
       showToast: false
     });
     return null;

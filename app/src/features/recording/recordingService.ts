@@ -1,9 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
-import { emit } from '@tauri-apps/api/event';
+import { emit, listen } from '@tauri-apps/api/event';
 import { backendService } from '../../services/backend';
 import { createLogger } from '../../utils/logger';
 import { handleError, withErrorHandling } from '../../shared/utils/errorHandler';
-import { copyAndPaste } from '../../shared/utils/clipboard';
+import { pasteAtCursor } from '../../shared/utils/clipboard';
 
 const logger = createLogger('RecordingService');
 
@@ -21,8 +21,17 @@ export interface TranscriptionResult {
 class RecordingService {
   private handlers: RecordingHandlers = {};
   private isProcessing = false;
-  private readonly MIN_RECORDING_DURATION_SECONDS =
-    Number(import.meta.env.VITE_MIN_RECORDING_DURATION_SECONDS) || 0.5;
+
+  constructor() {
+    this.setupEventListener();
+  }
+
+  private async setupEventListener() {
+    // Listen for recording stopped event and process the recording
+    await listen('recording_stopped', async () => {
+      await this.processRecording();
+    });
+  }
 
   async processRecording(): Promise<TranscriptionResult | null> {
     if (this.isProcessing) {
@@ -31,41 +40,41 @@ class RecordingService {
     }
 
     this.isProcessing = true;
-    logger.info('Starting transcription process');
 
     try {
-      // Get the optimized PCM audio data
-      const [pcmData, sampleRate] = await invoke<[number[], number]>('get_audio_pcm');
+      // Get the Opus encoded audio data
+      const opusData = await invoke<number[]>('get_audio_opus');
 
       // Convert number array to Uint8Array and then to ArrayBuffer
-      const audioBuffer = new Uint8Array(pcmData);
+      const audioBuffer = new Uint8Array(opusData);
       const arrayBuffer = audioBuffer.buffer.slice(
         audioBuffer.byteOffset,
         audioBuffer.byteOffset + audioBuffer.byteLength
       );
 
-      // Check minimum recording duration
-      const durationSeconds = audioBuffer.length / (sampleRate * 2); // 16-bit PCM = 2 bytes per sample
-      if (durationSeconds < this.MIN_RECORDING_DURATION_SECONDS) {
-        logger.warn(
-          `Recording too short: ${durationSeconds.toFixed(2)}s < ${this.MIN_RECORDING_DURATION_SECONDS}s minimum`
-        );
-        return null;
-      }
 
-      logger.info(
-        `Processing PCM data: ${audioBuffer.length} bytes at ${sampleRate} Hz (${durationSeconds.toFixed(2)}s)`
-      );
-
-      // Send to backend for transcription
-      const response = await backendService.transcribeAudio(arrayBuffer, sampleRate, {
+      // Send to backend for transcription (Phase 1: Quick transcription)
+      const response = await backendService.transcribeAudio(arrayBuffer, {
         enhance: true,
         language: 'en-US',
       });
 
-      logger.info('Transcription complete', { activityId: response.activityId });
+      // Phase 2: Background upload (fire and forget)
+      backendService.uploadActivityAudio(response.activityId, arrayBuffer)
+        .then(() => logger.info('Audio uploaded successfully', { activityId: response.activityId }))
+        .catch((error) => logger.warn('Audio upload failed (transcription still successful)', error));
+
 
       const transcriptionText = response.enhanced || response.transcription;
+      
+      if (!transcriptionText || transcriptionText.trim() === '') {
+        logger.warn('Empty transcription received', { 
+          activityId: response.activityId,
+          rawResponse: response 
+        });
+        throw new Error('No transcription text received from backend');
+      }
+      
       const result: TranscriptionResult = {
         text: transcriptionText,
         activityId: response.activityId,
@@ -83,8 +92,8 @@ class RecordingService {
         this.handlers.onTranscriptionComplete(transcriptionText, response.activityId);
       }
 
-      // Copy to clipboard and paste
-      await copyAndPaste(transcriptionText, { emitEvent: true });
+      // Paste at cursor
+      await pasteAtCursor(transcriptionText);
 
       return result;
     } catch (error) {
@@ -101,7 +110,6 @@ class RecordingService {
       return null;
     } finally {
       this.isProcessing = false;
-      logger.info('Recording processing completed');
     }
   }
 
@@ -121,9 +129,13 @@ class RecordingService {
   }
 
   async deleteActivity(id: string): Promise<boolean> {
-    // TODO: Implement when backend endpoint is available
-    logger.warn(`Delete activity ${id} - backend endpoint not yet implemented`);
-    return true;
+    try {
+      await backendService.deleteActivity(id);
+      return true;
+    } catch (error) {
+      logger.error('Failed to delete activity', { id, error });
+      return false;
+    }
   }
 }
 

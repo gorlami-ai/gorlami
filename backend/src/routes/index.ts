@@ -40,8 +40,14 @@ router.post(
 
 router.get('/api/activities', asyncHandler(activitiesController.listActivities));
 router.get('/api/activities/:activityId', asyncHandler(activitiesController.getActivity));
+router.post(
+  '/api/activities/:activityId/audio',
+  upload.single('audio'),
+  asyncHandler(activitiesController.uploadActivityAudio)
+);
+router.delete('/api/activities/:activityId', asyncHandler(activitiesController.deleteActivity));
 
 // Files routes
-router.get('/api/files/:fileId', asyncHandler(filesController.downloadFile));
+router.get('/api/files/:fileId/signed-url', asyncHandler(filesController.getSignedUrl));
 
 export default router;

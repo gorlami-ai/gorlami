@@ -10,7 +10,18 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [],
+    "windows": [
+      {
+        "label": "main",
+        "title": "Gorlami",
+        "width": 1200,
+        "height": 800,
+        "visible": false,
+        "center": true,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
     "macOSPrivateApi": true,
     "security": {
       "csp": null
@@ -22,11 +33,14 @@
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns"],
     "createUpdaterArtifacts": true,
     "macOS": {
-      "entitlements": null,
+      "entitlements": "Entitlements.plist",
       "exceptionDomain": "",
       "frameworks": [],
       "signingIdentity": null,
-      "minimumSystemVersion": "10.15"
+      "minimumSystemVersion": "10.15",
+      "files": {
+        "Info.plist": "Info.plist"
+      }
     }
   },
   "plugins": {

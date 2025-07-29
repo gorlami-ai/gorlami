@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Copy, Trash2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Pause, Copy, Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 interface ActivityItemProps {
   id: string;
@@ -7,10 +7,11 @@ interface ActivityItemProps {
   date: Date;
   duration?: string;
   type: 'transcription' | 'text';
+  isPlaying?: boolean;
+  isLoadingAudio?: boolean;
   onPlay?: () => void;
   onCopy?: () => void;
   onDelete?: () => void;
-  onRerun?: () => void;
 }
 
 export function ActivityItem({
@@ -18,30 +19,35 @@ export function ActivityItem({
   date,
   duration,
   type,
+  isPlaying = false,
+  isLoadingAudio = false,
   onPlay,
   onCopy,
   onDelete,
-  onRerun,
 }: ActivityItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isLongText = content.length > 200;
   const formatDate = (date: Date) => {
     const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
-    }
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+
+    // Format date part
+    const dateOptions: Intl.DateTimeFormatOptions = {
+      month: 'short',
       day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-    });
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    };
+
+    // Format time part
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    };
+
+    const dateStr = date.toLocaleDateString('en-US', dateOptions);
+    const timeStr = date.toLocaleTimeString('en-US', timeOptions);
+
+    return `${dateStr} ${timeStr}`;
   };
 
   return (
@@ -69,29 +75,27 @@ export function ActivityItem({
           )}
           <div className="flex items-center gap-3 mt-2">
             <span className="text-xs text-gray-500">{formatDate(date)}</span>
-            {duration && (
-              <span className="text-xs text-gray-500">• {duration}</span>
-            )}
+            {duration && <span className="text-xs text-gray-500">• {duration}</span>}
           </div>
         </div>
-        
+
         <div className="flex items-center gap-1 flex-shrink-0">
-          {type === 'transcription' && (
+          {type === 'transcription' && onPlay && (
             <button
               onClick={onPlay}
-              className="p-1.5 bg-primary-100 hover:bg-primary-200 rounded-full transition-colors"
-              title="Play"
+              disabled={isLoadingAudio}
+              className="p-1.5 bg-primary-100 hover:bg-primary-200 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={isPlaying ? 'Pause' : 'Play'}
             >
-              <Play className="w-4 h-4 text-primary-600" />
+              {isLoadingAudio ? (
+                <Loader2 className="w-4 h-4 text-primary-600 animate-spin" />
+              ) : isPlaying ? (
+                <Pause className="w-4 h-4 text-primary-600" />
+              ) : (
+                <Play className="w-4 h-4 text-primary-600" />
+              )}
             </button>
           )}
-          <button
-            onClick={onRerun}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-            title="Reprocess"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
           <button
             onClick={onCopy}
             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"

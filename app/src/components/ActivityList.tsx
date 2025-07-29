@@ -4,7 +4,17 @@ import { Search } from 'lucide-react';
 import { backendService } from '../services/backend';
 import { logger } from '../utils/logger';
 import { invoke } from '@tauri-apps/api/core';
-import { recordingService } from '../services/recording';
+import { recordingService } from '../features/recording/recordingService';
+import { audioPlayer } from '../services/audioPlayer';
+
+/**
+ * Format duration from seconds to MM:SS format
+ */
+function formatDuration(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
 
 interface Activity {
   id: string;
@@ -12,6 +22,8 @@ interface Activity {
   date: Date;
   duration?: string;
   type: 'transcription' | 'text';
+  fileId?: string;
+  providerResponse?: any;
 }
 
 export function ActivityList() {
@@ -19,6 +31,8 @@ export function ActivityList() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [useMockData, setUseMockData] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [loadingAudioId, setLoadingAudioId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchActivities();
@@ -43,9 +57,12 @@ export function ActivityList() {
         content: activity.outputText,
         date: new Date(activity.createdAt),
         type: activity.type === 'TRANSCRIPTION' ? 'transcription' : 'text',
-        // Duration will be extracted from providerResponse when backend provides it
-        // Format expected: "MM:SS" (e.g., "02:34" for 2 minutes 34 seconds)
-        duration: undefined,
+        fileId: activity.fileId || undefined,
+        providerResponse: activity.providerResponse,
+        // Extract and format duration from Deepgram response
+        duration: activity.type === 'TRANSCRIPTION' && activity.providerResponse?.deepgram?.duration
+          ? formatDuration(activity.providerResponse.deepgram.duration)
+          : undefined,
       }));
       
       setActivities(mappedActivities);
@@ -64,8 +81,69 @@ export function ActivityList() {
     activity.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handlePlay = (id: string) => {
-    console.log('Play:', id);
+  const handlePlay = async (id: string) => {
+    const activity = activities.find(a => a.id === id);
+    if (!activity || !activity.fileId) {
+      logger.error('Cannot play: activity not found or no audio file');
+      return;
+    }
+
+    try {
+      // Check if this is the currently playing audio
+      if (playingId === id) {
+        if (audioPlayer.isPlaying(id)) {
+          // Just pause, no need to fetch URL
+          audioPlayer.pause();
+          setPlayingId(null);
+          return;
+        } else {
+          // Resume paused audio
+          await audioPlayer.resume();
+          setPlayingId(id);
+          return;
+        }
+      }
+
+      // Check if we already have the audio loaded
+      if (audioPlayer.isAudioLoaded(id)) {
+        // Play cached audio
+        await audioPlayer.play('', id, () => {
+          // Audio ended naturally, reset the playing state
+          setPlayingId(null);
+          logger.info('Audio ended naturally', { activityId: id });
+        });
+        setPlayingId(id);
+        return;
+      }
+
+      // Check if we have a cached URL
+      let url = audioPlayer.getCachedUrl(id);
+      
+      if (!url) {
+        // Need to fetch a new signed URL
+        setLoadingAudioId(id);
+        const signedUrlData = await backendService.getFileSignedUrl(activity.fileId);
+        url = signedUrlData.url;
+        
+        // Cache the URL for future use
+        audioPlayer.cacheUrl(id, url, signedUrlData.expiresIn);
+      }
+      
+      // Play audio (will be fetched and cached)
+      await audioPlayer.play(url, id, () => {
+        // Audio ended naturally, reset the playing state
+        setPlayingId(null);
+        logger.info('Audio ended naturally', { activityId: id });
+      });
+      setPlayingId(id);
+      
+      logger.info('Audio playback started', { activityId: id, fromCache: audioPlayer.isAudioLoaded(id) });
+    } catch (error) {
+      logger.error('Failed to play audio', error);
+      setPlayingId(null);
+    } finally {
+      setLoadingAudioId(null);
+    }
   };
 
   const handleCopy = async (id: string) => {
@@ -87,9 +165,9 @@ export function ActivityList() {
       // Optimistically remove from UI
       setActivities(activities.filter(a => a.id !== id));
       
-      // Note: Backend delete endpoint implementation pending
-      // When available, add: await backendService.deleteActivity(id);
-      logger.info(`Activity ${id} removed from local state (backend delete pending)`);
+      // Delete from backend
+      await backendService.deleteActivity(id);
+      logger.info(`Activity ${id} deleted successfully`);
     } catch (error) {
       logger.error('Failed to delete activity', error);
       // Refresh to restore the deleted item if API fails
@@ -97,9 +175,6 @@ export function ActivityList() {
     }
   };
 
-  const handleRerun = (id: string) => {
-    console.log('Rerun:', id);
-  };
 
   const stats = {
     total: activities.length,
@@ -156,10 +231,11 @@ export function ActivityList() {
               <ActivityItem
                 key={activity.id}
                 {...activity}
-                onPlay={activity.type === 'transcription' ? () => handlePlay(activity.id) : undefined}
+                isPlaying={playingId === activity.id}
+                isLoadingAudio={loadingAudioId === activity.id}
+                onPlay={activity.type === 'transcription' && activity.fileId ? () => handlePlay(activity.id) : undefined}
                 onCopy={() => handleCopy(activity.id)}
                 onDelete={() => handleDelete(activity.id)}
-                onRerun={() => handleRerun(activity.id)}
               />
             ))}
             

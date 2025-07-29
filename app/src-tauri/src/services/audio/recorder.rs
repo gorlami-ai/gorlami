@@ -1,5 +1,7 @@
 use crate::error::{AppError, AppResult};
-use crate::services::audio::processing::{calculate_rms, convert_to_mono, convert_to_pcm_bytes};
+use crate::platform::audio_permissions;
+use crate::services::audio::ogg_opus_encoder::encode_to_ogg_opus;
+use crate::services::audio::processing::{calculate_rms, convert_to_mono, resample_to_16khz};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::StreamConfig;
 use parking_lot::Mutex;
@@ -44,6 +46,19 @@ impl AudioRecorder {
     }
 
     pub fn start_recording(&self) -> AppResult<()> {
+        // Check microphone permission first
+        let permission_status = audio_permissions::check_microphone_permission();
+        match permission_status {
+            audio_permissions::AVAuthorizationStatus::Authorized => {
+                // Permission granted, continue
+            }
+            audio_permissions::AVAuthorizationStatus::NotDetermined => {
+                return Err(AppError::Permission(
+                    "Microphone permission not yet requested. Please grant permission first.".to_string()
+                ));
+            }
+        }
+        
         // Check if already recording
         if self.is_recording.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
             return Err(AppError::Recording("Already recording".to_string()));
@@ -71,7 +86,15 @@ impl AudioRecorder {
                 .ok_or_else(|| AppError::Audio("Selected audio device not found".to_string()))?
         } else {
             host.default_input_device()
-                .ok_or_else(|| AppError::Audio("No default input device found".to_string()))?
+                .ok_or_else(|| {
+                    // Check if it's a permission issue
+                    let permission_status = audio_permissions::check_microphone_permission();
+                    if permission_status != audio_permissions::AVAuthorizationStatus::Authorized {
+                        AppError::Permission("No microphone access. Please grant permission in System Preferences.".to_string())
+                    } else {
+                        AppError::Audio("No default input device found. Please check your microphone connection.".to_string())
+                    }
+                })?
         };
 
         let config = device.default_input_config()?;
@@ -125,16 +148,11 @@ impl AudioRecorder {
             return Ok(());
         }
 
-        log::info!("Stopping recording...");
-
         // Wait a bit for the recording thread to finish processing
         thread::sleep(Duration::from_millis(THREAD_SLEEP_MS));
 
         // Emit stopped event
         let _ = self.app.emit("recording_stopped", ());
-
-        let state = self.audio_state.lock();
-        log::info!("Recording stopped, {} samples captured", state.audio_buffer.len());
 
         Ok(())
     }
@@ -143,18 +161,13 @@ impl AudioRecorder {
         self.is_recording.load(Ordering::SeqCst)
     }
 
-    pub fn get_audio_pcm(&self) -> AppResult<(Vec<u8>, u32)> {
+    pub fn get_audio_opus(&self) -> AppResult<Vec<u8>> {
         let mut state = self.audio_state.lock();
         
         if state.audio_buffer.is_empty() {
             return Err(AppError::Audio("No audio data recorded".to_string()));
         }
 
-        log::info!(
-            "Processing {} samples at {} Hz",
-            state.audio_buffer.len(),
-            state.sample_rate
-        );
 
         // Take the audio data
         let audio_data: Vec<f32> = state.audio_buffer.drain(..).collect();
@@ -168,12 +181,19 @@ impl AudioRecorder {
             audio_data
         };
 
-        // Convert to 16-bit PCM
-        let pcm_bytes = convert_to_pcm_bytes(&mono_samples);
+        // Resample to 16kHz for optimal speech recognition
+        let resampled_samples = resample_to_16khz(&mono_samples, original_sample_rate)?;
+        
+        // Check if audio is too quiet
+        let rms = calculate_rms(&resampled_samples);
+        if rms < 0.02 {
+            log::warn!("Audio level is very low (RMS: {}), transcription may fail", rms);
+        }
 
-        log::info!("Converted to {} bytes of PCM data at {} Hz", pcm_bytes.len(), original_sample_rate);
+        // Encode to Ogg Opus
+        let ogg_opus_data = encode_to_ogg_opus(&resampled_samples)?;
 
-        Ok((pcm_bytes, original_sample_rate))
+        Ok(ogg_opus_data)
     }
 
     pub fn select_device(&self, device_name: &str) -> AppResult<()> {
@@ -187,6 +207,7 @@ impl AudioRecorder {
         Ok(())
     }
 }
+
 
 fn run_recording<T>(
     device: cpal::Device,

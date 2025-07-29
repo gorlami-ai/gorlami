@@ -53,12 +53,8 @@ class EditModeService {
 
         const editedText = response.outputText;
 
-        // Replace the selected text with the edited version
-        // First copy to clipboard
-        await invoke('copy_to_clipboard', { text: editedText });
-        
-        // Then paste at cursor (which will replace selection)
-        setTimeout(async () => {
+        // Replace the selected text with the edited version using accessibility API
+        try {
           await invoke('paste_at_cursor', { text: editedText });
           
           // Emit completion event
@@ -71,7 +67,11 @@ class EditModeService {
           if (this.handlers.onEditComplete) {
             this.handlers.onEditComplete(editedText);
           }
-        }, 100);
+        } catch (pasteError) {
+          // If paste fails due to permission, the backend will emit accessibility_permission_needed
+          logger.error('Failed to paste edited text', pasteError);
+          throw new Error('Failed to paste edited text. Please grant accessibility permission.');
+        }
 
       } catch (error) {
         logger.error('Error in edit mode', error);
